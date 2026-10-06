@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
-import { createRouter, publicQuery, authedQuery, memberQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { posts, postLikes, threads, threadReplies, licenseRequests, users } from "@db/schema";
+import { createRouter, publicQuery, authedQuery, memberQuery } from "./middleware.js";
+import { getDb } from "./queries/connection.js";
+import { posts, postLikes, threads, threadReplies, licenseRequests, users } from "../db/schema.js";
 
 const COUNTRIES = [
   "USA",

@@ -2,13 +2,13 @@ import * as cookie from "cookie";
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { z } from "zod";
-import { Session } from "@contracts/constants";
-import { getSessionCookieOptions } from "./lib/cookies";
-import { createRouter, authedQuery, publicQuery } from "./middleware";
-import { getDb } from "./queries/connection";
-import { users } from "@db/schema";
+import { Session } from "../contracts/constants.js";
+import { getSessionCookieOptions } from "./lib/cookies.js";
+import { createRouter, authedQuery, publicQuery } from "./middleware.js";
+import { getDb } from "./queries/connection.js";
+import { users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
-import { signSessionToken } from "./session";
+import { signSessionToken } from "./session.js";
 
 const scrypt = promisify(nodeScrypt);
 

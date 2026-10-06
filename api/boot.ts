@@ -1,7 +1,7 @@
 import { serve } from "@hono/node-server";
-import { serveStaticFiles } from "./lib/vite";
-import app from "./app";
-import { env } from "./lib/env";
+import { serveStaticFiles } from "./lib/vite.js";
+import app from "./app.js";
+import { env } from "./lib/env.js";
 
 if (env.isProduction) {
   serveStaticFiles(app);

@@ -1,9 +1,9 @@
-import { authRouter } from "./auth-router";
-import { forumRouter } from "./forum-router";
-import { createRouter, publicQuery } from "./middleware";
+import { authRouter } from "./auth-router.js";
+import { forumRouter } from "./forum-router.js";
+import { createRouter, publicQuery } from "./middleware.js";
 import { z } from "zod";
-import { getDb } from "./queries/connection";
-import { contactMessages } from "@db/schema";
+import { getDb } from "./queries/connection.js";
+import { contactMessages } from "../db/schema.js";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),

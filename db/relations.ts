@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { users, posts, postLikes, threads, threadReplies, licenseRequests } from "./schema";
+import { users, posts, postLikes, threads, threadReplies, licenseRequests } from "./schema.js";
 
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),

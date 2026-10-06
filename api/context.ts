@@ -1,6 +1,6 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
-import type { User } from "@db/schema";
-import { authenticateRequest } from "./auth";
+import type { User } from "../db/schema.js";
+import { authenticateRequest } from "./auth.js";
 
 export type TrpcContext = {
   req: Request;
