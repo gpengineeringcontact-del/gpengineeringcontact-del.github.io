@@ -1,4 +1,4 @@
-import { getDb } from "../api/queries/connection";
+import { getDb } from "../server/queries/connection.js";
 import { users, posts, threads, threadReplies } from "./schema";
 
 const UNSPLASH = (id: string) =>
