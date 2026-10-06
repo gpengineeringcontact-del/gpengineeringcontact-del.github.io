@@ -282,7 +282,9 @@ export function UpgradeDialog({ onClose }: { onClose: () => void }) {
         const body = await response.json().catch(() => null) as { error?: string } | null;
         throw new Error(body?.error ?? "Checkout konnte nicht gestartet werden.");
       }
-      window.location.assign(response.url);
+      const body = await response.json() as { url?: string };
+      if (!body.url) throw new Error("Stripe hat keine Checkout-URL geliefert.");
+      window.location.assign(body.url);
     } catch (checkoutError) {
       setError(checkoutError instanceof Error ? checkoutError.message : "Checkout konnte nicht gestartet werden.");
       setLoading(false);

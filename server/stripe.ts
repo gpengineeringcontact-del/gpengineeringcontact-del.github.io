@@ -30,7 +30,7 @@ export async function createCheckoutSession(request: Request) {
     });
   }
   if (user.membershipStatus === "active") {
-    return Response.redirect(`${env.appUrl}/?payment=already-active`, 303);
+    return Response.json({ url: `${env.appUrl}/?payment=already-active` });
   }
 
   const body = new URLSearchParams({
@@ -58,7 +58,7 @@ export async function createCheckoutSession(request: Request) {
   }
   const session = (await response.json()) as { url?: string };
   if (!session.url) throw new Error("Stripe hat keine Checkout-URL geliefert.");
-  return Response.redirect(session.url, 303);
+  return Response.json({ url: session.url });
 }
 
 function verifyStripeSignature(payload: string, signature: string) {
