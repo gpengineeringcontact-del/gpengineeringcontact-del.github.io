@@ -9,6 +9,7 @@ import { getDb } from "./queries/connection.js";
 import { users } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { signSessionToken } from "./session.js";
+import { databaseErrorMessage } from "./lib/database-errors.js";
 
 const scrypt = promisify(nodeScrypt);
 
@@ -43,7 +44,12 @@ export const authRouter = createRouter({
     plan: z.enum(["free", "premium"]).default("free"),
   })).mutation(async ({ input, ctx }) => {
     const db = getDb();
-    const existing = await db.query.users.findFirst({ where: eq(users.email, input.email.toLowerCase()) });
+    let existing;
+    try {
+      existing = await db.query.users.findFirst({ where: eq(users.email, input.email.toLowerCase()) });
+    } catch (error) {
+      throw new Error(databaseErrorMessage(error));
+    }
     if (existing) throw new Error("Für diese E-Mail-Adresse gibt es bereits ein Konto.");
     await db.insert(users).values({
       unionId: `email:${input.email.toLowerCase()}`,
