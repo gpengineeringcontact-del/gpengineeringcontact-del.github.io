@@ -16,7 +16,8 @@ export default function Profile() {
   const report = trpc.contact.reportUser.useMutation({ onSuccess: () => setReported(true) });
   const block = trpc.contact.blockUser.useMutation({ onSuccess: () => setBlocked((value) => !value) });
   if (profile.isLoading) return <main className="min-h-screen bg-cream p-8" />;
-  if (!profile.data) return <main className="min-h-screen bg-cream p-8">Profil nicht gefunden.</main>;
+  if (profile.error) return <main className="min-h-screen bg-cream px-5 py-8 sm:px-8"><div className="mx-auto max-w-4xl"><Link to="/" className="text-sm font-semibold text-forest underline">← Zurück zu Wyfare</Link><section className="card-offset mt-8 p-8"><h1 className="font-display text-2xl font-bold text-forest">Profil konnte nicht geladen werden</h1><p className="mt-2 text-sm text-sagedark">{profile.error.message}</p></section></div></main>;
+  if (!profile.data) return <main className="min-h-screen bg-cream px-5 py-8 sm:px-8"><div className="mx-auto max-w-4xl"><Link to="/" className="text-sm font-semibold text-forest underline">← Zurück zu Wyfare</Link><section className="card-offset mt-8 p-8"><h1 className="font-display text-2xl font-bold text-forest">Profil nicht gefunden</h1><p className="mt-2 text-sm text-sagedark">Dieses Profil ist nicht verfügbar.</p></section></div></main>;
   const person = profile.data.user;
   return <main className="min-h-screen bg-cream px-5 py-8 sm:px-8"><div className="mx-auto max-w-4xl">
     <Link to="/nachrichten" className="text-sm font-semibold text-forest underline">← Zurück zu Nachrichten</Link>

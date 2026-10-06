@@ -113,6 +113,7 @@ export const authRouter = createRouter({
     const user = identifier.includes("@")
       ? await db.query.users.findFirst({ where: eq(users.email, identifier) })
       : await db.query.users.findFirst({ where: eq(users.username, identifier) });
+    if (user && !user.isActive) throw new Error("Dieses Konto ist deaktiviert. Bitte wende dich an den Wyfare-Support.");
     if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new Error("Benutzername/E-Mail oder Passwort stimmt nicht.");
     }

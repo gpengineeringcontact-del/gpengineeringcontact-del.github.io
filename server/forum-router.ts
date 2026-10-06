@@ -90,12 +90,12 @@ export const forumRouter = createRouter({
     await getDb().delete(posts).where(and(eq(posts.id, input.postId), eq(posts.authorId, ctx.user.id)));
     return { ok: true };
   }),
-  listComments: publicQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional() })).query(async ({ input }) => {
+  listComments: publicQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional() }).refine((input) => Boolean(input.postId) !== Boolean(input.reportId), "Genau ein Inhalt muss ausgewählt werden.")).query(async ({ input }) => {
     const where = input.postId ? eq(contentComments.postId, input.postId) : eq(contentComments.reportId, input.reportId!);
     const rows = await getDb().query.contentComments.findMany({ where, orderBy: [desc(contentComments.createdAt)], with: { author: true } });
     return rows.map((row) => ({ ...row, authorName: row.author?.name ?? "Community" }));
   }),
-  addComment: memberQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional(), body: z.string().min(2).max(2000) })).mutation(async ({ ctx, input }) => {
+  addComment: memberQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional(), body: z.string().min(2).max(2000) }).refine((input) => Boolean(input.postId) !== Boolean(input.reportId), "Genau ein Inhalt muss ausgewählt werden.")).mutation(async ({ ctx, input }) => {
     if (!input.postId && !input.reportId) throw new TRPCError({ code: "BAD_REQUEST", message: "Kein Inhalt ausgewählt." });
     await getDb().insert(contentComments).values({ authorId: ctx.user.id, postId: input.postId ?? null, reportId: input.reportId ?? null, body: input.body.trim() });
     return { ok: true };
@@ -359,14 +359,7 @@ export const forumRouter = createRouter({
       if (input.userId === ctx.user.id) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Du kannst dein eigenes Admin-Konto hier nicht löschen." });
       }
-      await getDb().update(users).set({
-        isActive: false,
-        name: "Gelöschtes Konto",
-        email: null,
-        passwordHash: null,
-        stripeCustomerId: null,
-        stripeCheckoutSessionId: null,
-      }).where(eq(users.id, input.userId));
+      await getDb().update(users).set({ isActive: false }).where(eq(users.id, input.userId));
       return { ok: true };
     }),
 
