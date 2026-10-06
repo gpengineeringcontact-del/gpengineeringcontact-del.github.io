@@ -136,6 +136,17 @@ export const travelReports = pgTable("travel_reports", {
 
 export type TravelReport = typeof travelReports.$inferSelect;
 
+export const contentComments = pgTable("content_comments", {
+  id: serial("id").primaryKey(),
+  authorId: integer("authorId").notNull().references(() => users.id),
+  postId: integer("postId").references(() => posts.id),
+  reportId: integer("reportId").references(() => travelReports.id),
+  body: text("body").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ContentComment = typeof contentComments.$inferSelect;
+
 export const contactMessages = pgTable("contact_messages", {
   id: serial("id").primaryKey(),
   userId: integer("userId").references(() => users.id),

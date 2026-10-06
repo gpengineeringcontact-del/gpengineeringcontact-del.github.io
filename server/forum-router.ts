@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { createRouter, publicQuery, authedQuery, memberQuery, adminQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
-import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, travelReports, users } from "../db/schema.js";
+import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, travelReports, contentComments, users } from "../db/schema.js";
 import { sendAdminMessageEmail } from "./lib/email.js";
 import { uploadPostImage } from "./lib/storage.js";
 
@@ -42,6 +42,7 @@ export const forumRouter = createRouter({
       likeCount: p.likes.length,
       likedByMe: ctx.user ? p.likes.some((l) => l.userId === ctx.user!.id) : false,
       imageSrc: p.imageUrl ?? null,
+      authorId: p.authorId,
     }));
   }),
 
@@ -80,6 +81,25 @@ export const forumRouter = createRouter({
       });
       return { ok: true };
     }),
+  updatePost: memberQuery.input(z.object({ postId: z.number().int().positive(), caption: z.string().min(3).max(1000), country: z.enum(COUNTRIES), locationLabel: z.string().max(160).optional() })).mutation(async ({ ctx, input }) => {
+    const result = await getDb().update(posts).set({ caption: input.caption, country: input.country, locationLabel: input.locationLabel ?? null }).where(and(eq(posts.id, input.postId), eq(posts.authorId, ctx.user.id))).returning({ id: posts.id });
+    if (!result.length) throw new TRPCError({ code: "FORBIDDEN", message: "Du kannst nur eigene Beiträge bearbeiten." });
+    return { ok: true };
+  }),
+  deleteOwnPost: memberQuery.input(z.object({ postId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    await getDb().delete(posts).where(and(eq(posts.id, input.postId), eq(posts.authorId, ctx.user.id)));
+    return { ok: true };
+  }),
+  listComments: publicQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional() })).query(async ({ input }) => {
+    const where = input.postId ? eq(contentComments.postId, input.postId) : eq(contentComments.reportId, input.reportId!);
+    const rows = await getDb().query.contentComments.findMany({ where, orderBy: [desc(contentComments.createdAt)], with: { author: true } });
+    return rows.map((row) => ({ ...row, authorName: row.author?.name ?? "Community" }));
+  }),
+  addComment: memberQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional(), body: z.string().min(2).max(2000) })).mutation(async ({ ctx, input }) => {
+    if (!input.postId && !input.reportId) throw new TRPCError({ code: "BAD_REQUEST", message: "Kein Inhalt ausgewählt." });
+    await getDb().insert(contentComments).values({ authorId: ctx.user.id, postId: input.postId ?? null, reportId: input.reportId ?? null, body: input.body.trim() });
+    return { ok: true };
+  }),
 
   toggleLike: memberQuery
     .input(z.object({ postId: z.number().int().positive() }))
@@ -188,6 +208,7 @@ export const forumRouter = createRouter({
     });
     return rows.map((report) => ({
       ...report,
+      authorId: report.authorId,
       authorName: report.author?.name ?? "Community",
     }));
   }),
@@ -220,6 +241,15 @@ export const forumRouter = createRouter({
       });
       return { ok: true };
     }),
+  updateTravelReport: memberQuery.input(z.object({ reportId: z.number().int().positive(), title: z.string().min(5).max(255), body: z.string().min(50).max(12000), country: z.enum(COUNTRIES), locationLabel: z.string().max(160).optional() })).mutation(async ({ ctx, input }) => {
+    const result = await getDb().update(travelReports).set({ title: input.title.trim(), body: input.body.trim(), country: input.country, locationLabel: input.locationLabel?.trim() || null }).where(and(eq(travelReports.id, input.reportId), eq(travelReports.authorId, ctx.user.id))).returning({ id: travelReports.id });
+    if (!result.length) throw new TRPCError({ code: "FORBIDDEN", message: "Du kannst nur eigene Berichte bearbeiten." });
+    return { ok: true };
+  }),
+  deleteOwnTravelReport: memberQuery.input(z.object({ reportId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    await getDb().delete(travelReports).where(and(eq(travelReports.id, input.reportId), eq(travelReports.authorId, ctx.user.id)));
+    return { ok: true };
+  }),
 
   // ------------------------------------------------------------- B2B Lizenzen
   requestLicense: publicQuery

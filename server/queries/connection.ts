@@ -31,6 +31,7 @@ export async function ensureRuntimeSchema() {
       await db.execute(sql`CREATE TABLE IF NOT EXISTS "typing_statuses" ("id" serial PRIMARY KEY, "userId" integer NOT NULL REFERENCES "users"("id"), "recipientId" integer NOT NULL REFERENCES "users"("id"), "expiresAt" timestamp NOT NULL)`);
       await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "typing_statuses_pair" ON "typing_statuses" ("userId", "recipientId")`);
       await db.execute(sql`CREATE TABLE IF NOT EXISTS "travel_reports" ("id" serial PRIMARY KEY, "authorId" integer NOT NULL REFERENCES "users"("id"), "title" varchar(255) NOT NULL, "body" text NOT NULL, "country" varchar(120) NOT NULL, "locationLabel" varchar(160), "imageUrl" text, "createdAt" timestamp DEFAULT now() NOT NULL)`);
+      await db.execute(sql`CREATE TABLE IF NOT EXISTS "content_comments" ("id" serial PRIMARY KEY, "authorId" integer NOT NULL REFERENCES "users"("id"), "postId" integer REFERENCES "posts"("id"), "reportId" integer REFERENCES "travel_reports"("id"), "body" text NOT NULL, "createdAt" timestamp DEFAULT now() NOT NULL)`);
     })().catch((error) => {
       compatibilityPromise = undefined;
       throw error;

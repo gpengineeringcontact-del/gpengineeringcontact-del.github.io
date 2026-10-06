@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router";
-import { IconHandshake, IconHeart } from "./icons";
+import { IconClose, IconHandshake, IconHeart } from "./icons";
 
 export type FeedPost = {
   id: number;
@@ -15,6 +15,7 @@ export type FeedPost = {
   likeCount: number;
   likedByMe: boolean;
   imageSrc: string | null;
+  authorId: number;
 };
 
 const ROLE_LABEL: Record<string, string> = {
@@ -45,16 +46,18 @@ function PostCard({
   index,
   onLike,
   onLicense,
+  onOpen,
 }: {
   post: FeedPost;
   index: number;
   onLike: (postId: number) => void;
   onLicense: (post: FeedPost) => void;
+  onOpen: (post: FeedPost) => void;
 }) {
   const rotation = index % 3 === 0 ? "-rotate-[1.6deg]" : index % 3 === 1 ? "rotate-[1.2deg]" : "-rotate-[0.7deg]";
 
   return (
-    <article className={`masonry-item polaroid relative ${rotation}`}>
+    <article className={`masonry-item polaroid relative ${rotation}`} onClick={() => onOpen(post)}>
       <span className="tape" aria-hidden />
       {post.imageSrc && (
         <div className="relative overflow-hidden border border-forest/10">
@@ -81,7 +84,7 @@ function PostCard({
             </div>
           </div>
           <button
-            onClick={() => onLike(post.id)}
+            onClick={(event) => { event.stopPropagation(); onLike(post.id); }}
             className={`flex items-center gap-1.5 transition-colors ${
               post.likedByMe ? "text-tang" : "text-sagedark hover:text-tang"
             }`}
@@ -92,7 +95,7 @@ function PostCard({
           </button>
         </div>
         <button
-          onClick={() => onLicense(post)}
+          onClick={(event) => { event.stopPropagation(); onLicense(post); }}
           className="btn-outline mt-3 w-full !py-2 !text-[10px]"
         >
           <IconHandshake className="h-4 w-4" />
@@ -110,10 +113,11 @@ export function Feed({
   onLicense: (post: FeedPost) => void;
   onUpgrade: () => void;
 }) {
-  const { isAuthenticated, isMember } = useAuth();
+  const { user, isAuthenticated, isMember } = useAuth();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
   const [filter, setFilter] = useState<(typeof COUNTRY_FILTERS)[number]>("Alle");
+  const [selectedPost, setSelectedPost] = useState<FeedPost | null>(null);
 
   const postsQuery = trpc.forum.listPosts.useQuery();
   const likeMutation = trpc.forum.toggleLike.useMutation({
@@ -185,10 +189,22 @@ export function Feed({
               index={i}
               onLike={handleLike}
               onLicense={onLicense}
+              onOpen={setSelectedPost}
             />
           ))}
         </div>
       )}
+      {selectedPost && <PostDetail post={selectedPost} onClose={() => setSelectedPost(null)} isMember={isMember} isOwner={isAuthenticated && user?.id === selectedPost.authorId} onChanged={() => { setSelectedPost(null); utils.forum.listPosts.invalidate(); }} />}
     </section>
   );
+}
+
+function PostDetail({ post, onClose, isMember, isOwner, onChanged }: { post: FeedPost; onClose: () => void; isMember: boolean; isOwner: boolean; onChanged: () => void }) {
+  const comments = trpc.forum.listComments.useQuery({ postId: post.id });
+  const add = trpc.forum.addComment.useMutation({ onSuccess: () => { setText(""); comments.refetch(); } });
+    const update = trpc.forum.updatePost.useMutation({ onSuccess: onChanged });
+  const remove = trpc.forum.deleteOwnPost.useMutation({ onSuccess: onChanged });
+  const [text, setText] = useState("");
+  const [expanded, setExpanded] = useState(false);
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-forest/70 p-4" onClick={onClose}><div className="card-offset max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6 sm:p-8" onClick={(event) => event.stopPropagation()}><div className="flex justify-between gap-4"><div><p className="label-caps text-sagedark">{post.country}{post.locationLabel ? ` · ${post.locationLabel}` : ""}</p><h2 className="mt-2 font-display text-3xl font-bold text-forest">{post.authorName}</h2></div><div className="flex gap-2">{isOwner && <><button className="btn-outline !px-3 !py-2" onClick={() => { const caption = window.prompt("Text bearbeiten", post.caption);       if (caption?.trim()) update.mutate({ postId: post.id, caption, country: "Anderes Land" });    }}>Bearbeiten</button><button className="btn-outline !px-3 !py-2 !text-red-700" onClick={() => { if (window.confirm("Beitrag löschen?")) remove.mutate({ postId: post.id }); }}>Löschen</button></>}<button onClick={onClose} aria-label="Schließen"><IconClose /></button></div></div>{post.imageSrc && <img src={post.imageSrc} alt="" className="mt-5 max-h-[26rem] w-full rounded-2xl object-cover" />}<p className={`mt-5 whitespace-pre-wrap text-base leading-relaxed text-forest ${expanded ? "" : "line-clamp-5"}`}>{post.caption}</p>{post.caption.length > 260 && <button className="mt-2 text-sm font-bold text-forest underline" onClick={() => setExpanded((value) => !value)}>{expanded ? "Weniger anzeigen" : "Mehr anzeigen"}</button>}<h3 className="mt-8 font-display text-xl font-bold text-forest">Kommentare</h3><div className="mt-3 space-y-3">{comments.data?.map((comment) => <div key={comment.id} className="rounded-xl bg-cream p-3"><b className="text-sm">{comment.authorName}</b><p className="mt-1 text-sm">{comment.body}</p></div>)}</div>{isMember && <form className="mt-4 flex gap-2" onSubmit={(event) => { event.preventDefault(); if (text.trim()) add.mutate({ postId: post.id, body: text }); }}><input className="input-line" placeholder="Kommentar schreiben …" value={text} onChange={(event) => setText(event.target.value)} /><button className="btn-tang">Senden</button></form>}</div></div>;
 }
