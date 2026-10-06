@@ -6,5 +6,11 @@
     "api/[...route].ts": {
       "includeFiles": "dist/public/**"
     }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
   }
 }
