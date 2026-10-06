@@ -44,6 +44,14 @@ export async function sendPurchaseConfirmationEmail(to: string, name: string) {
   );
 }
 
+export async function sendAdminMessageEmail(to: string, subject: string, message: string) {
+  await sendEmail(
+    to,
+    subject,
+    `<p>Eine Nachricht vom Wyfare-Team:</p><p>${escapeHtml(message).replace(/\n/g, "<br />")}</p><p><a href="${env.appUrl}">Zu Wyfare</a></p>`,
+  );
+}
+
 function escapeHtml(value: string) {
   return value.replace(/[&<>"']/g, (character) => ({
     "&": "&amp;",

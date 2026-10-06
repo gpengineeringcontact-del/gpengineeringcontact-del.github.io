@@ -3,7 +3,8 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
 import { createRouter, publicQuery, authedQuery, memberQuery, adminQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
-import { posts, postLikes, threads, threadReplies, licenseRequests, reports, users } from "../db/schema.js";
+import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, users } from "../db/schema.js";
+import { sendAdminMessageEmail } from "./lib/email.js";
 
 const COUNTRIES = [
   "USA",
@@ -239,6 +240,106 @@ export const forumRouter = createRouter({
     .input(z.object({ userId: z.number().int().positive() }))
     .mutation(async ({ input }) => {
       await getDb().update(users).set({ isActive: false }).where(eq(users.id, input.userId));
+      return { ok: true };
+    }),
+
+  listUsers: adminQuery.query(async () => {
+    const rows = await getDb().query.users.findMany({ orderBy: [desc(users.createdAt)], limit: 500 });
+    return rows.map(({ passwordHash: _passwordHash, ...user }) => user);
+  }),
+
+  updateUser: adminQuery
+    .input(z.object({
+      userId: z.number().int().positive(),
+      name: z.string().min(2).max(255),
+      role: z.enum(["user", "admin"]),
+      membershipStatus: z.enum(["free", "active"]),
+      isActive: z.boolean(),
+      exchangeRole: z.enum(["planung", "im_ausland", "alumni"]).nullable(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.user.id && (input.role !== "admin" || !input.isActive)) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Du kannst deinen eigenen Admin-Zugang nicht entfernen." });
+      }
+      await getDb().update(users).set({
+        name: input.name.trim(),
+        role: input.role,
+        membershipStatus: input.membershipStatus,
+        membershipPlan: input.membershipStatus === "active" ? "premium" : "free",
+        isActive: input.isActive,
+        exchangeRole: input.exchangeRole,
+      }).where(eq(users.id, input.userId));
+      return { ok: true };
+    }),
+
+  deleteUser: adminQuery
+    .input(z.object({ userId: z.number().int().positive() }))
+    .mutation(async ({ ctx, input }) => {
+      if (input.userId === ctx.user.id) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Du kannst dein eigenes Admin-Konto hier nicht löschen." });
+      }
+      await getDb().update(users).set({
+        isActive: false,
+        name: "Gelöschtes Konto",
+        email: null,
+        passwordHash: null,
+        stripeCustomerId: null,
+        stripeCheckoutSessionId: null,
+      }).where(eq(users.id, input.userId));
+      return { ok: true };
+    }),
+
+  deletePost: adminQuery
+    .input(z.object({ postId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      await db.delete(postLikes).where(eq(postLikes.postId, input.postId));
+      await db.delete(reports).where(eq(reports.postId, input.postId));
+      await db.delete(licenseRequests).where(eq(licenseRequests.postId, input.postId));
+      await db.delete(posts).where(eq(posts.id, input.postId));
+      return { ok: true };
+    }),
+
+  deleteThread: adminQuery
+    .input(z.object({ threadId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const replyRows = await db.query.threadReplies.findMany({ where: eq(threadReplies.threadId, input.threadId) });
+      for (const reply of replyRows) {
+        await db.delete(reports).where(eq(reports.threadId, input.threadId));
+        await db.delete(threadReplies).where(eq(threadReplies.id, reply.id));
+      }
+      await db.delete(reports).where(eq(reports.threadId, input.threadId));
+      await db.delete(threads).where(eq(threads.id, input.threadId));
+      return { ok: true };
+    }),
+
+  deleteReply: adminQuery
+    .input(z.object({ replyId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await getDb().delete(threadReplies).where(eq(threadReplies.id, input.replyId));
+      return { ok: true };
+    }),
+
+  listAdminInbox: adminQuery.query(async () => {
+    const db = getDb();
+    const [contacts, licenses] = await Promise.all([
+      db.query.contactMessages.findMany({ orderBy: [desc(contactMessages.createdAt)], limit: 100 }),
+      db.query.licenseRequests.findMany({ orderBy: [desc(licenseRequests.createdAt)], with: { post: true }, limit: 100 }),
+    ]);
+    return { contacts, licenses };
+  }),
+
+  messageUser: adminQuery
+    .input(z.object({
+      userId: z.number().int().positive(),
+      subject: z.string().min(3).max(160),
+      message: z.string().min(2).max(5000),
+    }))
+    .mutation(async ({ input }) => {
+      const user = await getDb().query.users.findFirst({ where: eq(users.id, input.userId) });
+      if (!user?.email) throw new TRPCError({ code: "BAD_REQUEST", message: "Dieser Nutzer hat keine E-Mail-Adresse." });
+      await sendAdminMessageEmail(user.email, input.subject, input.message);
       return { ok: true };
     }),
 
