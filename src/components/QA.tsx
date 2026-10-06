@@ -3,31 +3,9 @@ import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router";
 import { IconClose, IconCompass, IconSend } from "./icons";
+import { oliAgent } from "@/lib/oliAgent";
 
 type ChatMsg = { from: "user" | "bot"; text: string; escalation?: boolean };
-
-const DEMO_THREADS = [
-  { id: -1, title: "Wie finde ich Anschluss an der neuen Schule?", body: "Ich bin seit zwei Wochen hier und kenne noch niemanden. Wie habt ihr den ersten Schritt gemacht?", createdAt: new Date(), authorName: "Sophie", replyCount: 7 },
-  { id: -2, title: "Was gehört wirklich in den Koffer?", body: "Ich fliege im August nach Kanada und habe das Gefühl, viel zu viel einzupacken.", createdAt: new Date(), authorName: "Ben", replyCount: 12 },
-  { id: -3, title: "Wie war das erste Wochenende bei der Gastfamilie?", body: "Gibt es Regeln, die ich direkt am Anfang kennen sollte?", createdAt: new Date(), authorName: "Amelie", replyCount: 4 },
-];
-
-const CONCIERGE_ANSWERS: { match: RegExp; text: string }[] = [
-  {
-    match: /taschengeld|geld|budget|kosten/i,
-    text: "Für die USA oder Kanada empfehlen die meisten Alumni etwa 200 bis 300 Euro Taschengeld im Monat – je nachdem, wie viel du unternimmst.",
-  },
-  {
-    match: /visum|visa/i,
-    text: "Visumsprozesse dauern oft 4 bis 8 Wochen. Für die USA brauchst du meist das J1- oder F1-Visum. Fang früh mit den Dokumenten an!",
-  },
-  {
-    match: /gastfamilie|host ?family/i,
-    text: "Gastfamilien werden von den Organisationen sorgfältig ausgewählt. Wenn es nicht passt, gibt es immer einen Wechsel-Prozess – sprich früh mit deiner Ansprechperson.",
-  },
-];
-
-const PREMIUM_KEYWORDS = /orga|organisation|beste|tüv|dfh|sicher|agentur|anbieter|bewertung/i;
 
 export function QA({ onUpgrade }: { onUpgrade: () => void }) {
   const { isAuthenticated, isMember } = useAuth();
@@ -43,17 +21,22 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
   const [messages, setMessages] = useState<ChatMsg[]>([
     {
       from: "bot",
-      text: "Hallo! Ich bin der Wyfare Concierge. Frag mich alles rund ums Auslandsjahr – zum Beispiel zum Taschengeld, zum Visum oder zu Gastfamilien.",
+      text: "Hallo! Ich bin Oli, dein Wyfare Assistent. Frag mich alles rund um den Schüleraustausch und Auslandsaufenthalte. Wenn du ein bestimmtes Land meinst, sag es einfach dazu.",
     },
   ]);
   const [chatInput, setChatInput] = useState("");
+  const [typing, setTyping] = useState(false);
+  const [suggestions, setSuggestions] = useState([
+    "Wie ist das Leben in einer Gastfamilie?",
+    "Was kostet ein Austauschjahr ungefähr?",
+    "Welche Visum-Regeln gelten?",
+  ]);
 
   const threadsQuery = trpc.forum.listThreads.useQuery();
   const threadQuery = trpc.forum.getThread.useQuery(
     { threadId: openThreadId ?? 0 },
     { enabled: openThreadId !== null && openThreadId > 0 },
   );
-  const selectedDemoThread = DEMO_THREADS.find((thread) => thread.id === openThreadId);
 
   const createThread = trpc.forum.createThread.useMutation({
     onSuccess: () => {
@@ -93,29 +76,17 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
     if (!text) return;
     setMessages((m) => [...m, { from: "user", text }]);
     setChatInput("");
+    setTyping(true);
     window.setTimeout(() => {
-      if (PREMIUM_KEYWORDS.test(text) && !isMember) {
-        setMessages((m) => [
-          ...m,
-          {
-            from: "bot",
-            escalation: true,
-            text: "Konkrete Einschätzungen zu Organisationen, Agenturen und Qualitätsstandards gehören zum Wyfare Zugang für einmalig 25 €. Mit einem kostenlosen Account kannst du hier allgemeine Fragen rund ums Auslandsjahr stellen.",
-          },
-        ]);
-        return;
-      }
-      const hit = CONCIERGE_ANSWERS.find((a) => a.match.test(text));
-      setMessages((m) => [
-        ...m,
-        {
-          from: "bot",
-          text:
-            hit?.text ??
-            "Spannende Frage! Schau am besten auch in die Q&A-Threads links – dort teilt die Community ihre Erfahrungen. Oder stell deine Frage direkt als neuen Thread.",
-        },
+      const reply = oliAgent.process(text);
+      setTyping(false);
+      setSuggestions([
+        "Wie finde ich dort neue Freunde?",
+        "Wie sieht der Unterricht aus?",
+        "Was mache ich, wenn die Gastfamilie nicht passt?",
       ]);
-    }, 600);
+      setMessages((m) => [...m, { from: "bot", text: reply }]);
+    }, Math.max(600, Math.min(text.length * 15, 1200)));
   };
 
   return (
@@ -180,7 +151,7 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
             )}
 
             <div className="scroll-slim max-h-[480px] space-y-2.5 overflow-y-auto pr-1">
-              {(threadsQuery.data?.length ? threadsQuery.data : DEMO_THREADS).map((t) => (
+              {(threadsQuery.data ?? []).map((t) => (
                 <button
                   key={t.id}
                   onClick={() => setOpenThreadId(t.id)}
@@ -201,9 +172,7 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
                   </p>
                 </button>
               ))}
-              {!threadsQuery.isLoading && !threadsQuery.data?.length && (
-                <p className="mt-3 text-center text-[11px] text-sagedark">Demo-Fragen – melde dich an, um mitzuschreiben.</p>
-              )}
+              {!threadsQuery.isLoading && !threadsQuery.data?.length && <p className="mt-3 text-center text-[11px] text-sagedark">Noch keine Fragen. Starte die erste Diskussion.</p>}
             </div>
           </div>
         </div>
@@ -238,7 +207,7 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
                     <IconCompass className="h-4 w-4" />
                   </span>
                   <div className="max-w-[80%] border-2 border-tang bg-paper px-4 py-3">
-                    <p className="text-sm text-forest">{m.text}</p>
+                    <p className="text-sm text-forest" dangerouslySetInnerHTML={{ __html: m.text }} />
                     <button onClick={onUpgrade} className="btn-tang mt-3 !py-2 !text-[10px]">
                       Wyfare Zugang für 25 € öffnen
                     </button>
@@ -250,21 +219,25 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
                     <IconCompass className="h-4 w-4" />
                   </span>
                   <div className="max-w-[80%] border-2 border-forest/15 bg-paper px-4 py-3 text-sm text-forest">
-                    {m.text}
+                    <span dangerouslySetInnerHTML={{ __html: m.text }} />
                   </div>
                 </div>
               ),
             )}
           </div>
+          {typing && <div className="px-5 pb-2 text-xs italic text-sagedark">Oli schreibt gerade …</div>}
+          <div className="flex flex-wrap gap-2 bg-cream px-5 pb-3">
+            {suggestions.map((suggestion) => <button key={suggestion} type="button" className="rounded-full border border-tang/60 bg-tang/10 px-3 py-1.5 text-[11px] font-semibold text-forest transition hover:bg-tang/25" onClick={() => { setChatInput(suggestion); window.setTimeout(() => (document.getElementById("oli-chat-form") as HTMLFormElement | null)?.requestSubmit(), 0); }}>{suggestion}</button>)}
+          </div>
 
-          <form onSubmit={handleChat} className="flex gap-2 border-t-2 border-forest bg-paper p-4">
+          <form id="oli-chat-form" onSubmit={handleChat} className="flex gap-2 border-t-2 border-forest bg-paper p-4">
             <input
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
               placeholder={isAuthenticated ? "Stelle eine Frage …" : "Kostenloses Konto zum Fragenstellen"}
               className="input-line flex-1 !border-forest/40"
             />
-            <button type="submit" className="btn-tang !px-5" aria-label="Senden">
+            <button type="submit" className="btn-tang !px-5" aria-label="Senden" disabled={typing}>
               <IconSend className="h-4 w-4" />
             </button>
           </form>
@@ -283,18 +256,18 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
           >
             <div className="mb-5 flex items-start justify-between gap-4">
               <h3 className="font-display text-xl font-bold leading-snug">
-                {threadQuery.data?.title ?? selectedDemoThread?.title ?? "Frage"}
+                {threadQuery.data?.title ?? "Frage"}
               </h3>
               <button onClick={() => setOpenThreadId(null)} aria-label="Schließen">
                 <IconClose className="h-5 w-5" />
               </button>
             </div>
-            {(threadQuery.data?.body ?? selectedDemoThread?.body) && (
+            {threadQuery.data?.body && (
               <p className="mb-2 text-sm leading-relaxed text-forest/85">
-                {threadQuery.data?.body ?? selectedDemoThread?.body}
+                {threadQuery.data.body}
               </p>
             )}
-            <p className="label-caps text-sagedark">von {threadQuery.data?.authorName ?? selectedDemoThread?.authorName}</p>
+            <p className="label-caps text-sagedark">von {threadQuery.data?.authorName ?? "Community"}</p>
 
             <div className="mt-6 space-y-4 border-t-2 border-forest/10 pt-5">
               {(threadQuery.data?.replies ?? []).map((r) => (
