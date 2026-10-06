@@ -1,0 +1,42 @@
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Manrope:wght@500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+    color: #173b35;
+    background: #f7f4ed;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+  }
+
+  * { box-sizing: border-box; }
+  body { @apply bg-cream text-forest antialiased; margin: 0; }
+  button, input, textarea, select { font: inherit; }
+  ::selection { background: #d5a39d; color: #173b55; }
+}
+
+@layer components {
+  .display-xl { @apply font-display font-bold tracking-[-0.045em] leading-[0.98]; }
+  .label-caps { @apply font-body text-[10px] font-semibold uppercase tracking-[0.12em]; }
+  .btn-tang { @apply inline-flex items-center justify-center gap-2 rounded-full bg-tang px-5 py-3 text-xs font-bold text-forest transition-all hover:-translate-y-0.5 hover:bg-tang-dark disabled:opacity-50; }
+  .btn-outline { @apply inline-flex items-center justify-center gap-2 rounded-full border border-forest/25 bg-transparent px-5 py-2.5 text-xs font-bold text-forest transition-all hover:border-forest hover:bg-forest hover:text-cream disabled:opacity-50; }
+  .card-offset { @apply border border-forest/10 bg-paper; box-shadow: 8px 8px 0 #dfe5d9; }
+  .card-offset-sm { @apply border border-forest/10 bg-paper; box-shadow: 4px 4px 0 #dfe5d9; }
+  .polaroid { @apply border border-forest/10 bg-paper p-3 pb-4; box-shadow: 0 16px 35px -22px rgb(23 59 53 / .5); transition: transform .25s ease, box-shadow .25s ease; }
+  .polaroid:hover { transform: translateY(-5px) rotate(0deg) !important; box-shadow: 0 22px 40px -20px rgb(23 59 53 / .5); }
+  .tape { @apply relative z-10 mx-auto -mb-2 block h-6 w-24 -translate-y-1/2 rotate-[-4deg]; background: rgb(213 163 157 / .62); }
+  .legal-copy h2 { @apply font-display text-2xl font-bold text-forest; }
+  .legal-copy h3 { @apply font-display text-lg font-bold text-forest; }
+  .legal-copy p { @apply leading-relaxed; }
+  .input-line { @apply w-full rounded-xl border border-forest/15 bg-cream/60 px-3 py-3 text-sm text-forest placeholder:text-sagedark/60 focus:border-tang focus:outline-none focus:ring-2 focus:ring-tang/15; }
+  .masonry { column-count: 1; column-gap: 1.25rem; }
+  @media (min-width: 640px) { .masonry { column-count: 2; } }
+  @media (min-width: 1100px) { .masonry { column-count: 3; } }
+  .masonry-item { break-inside: avoid; margin-bottom: 1.25rem; }
+  .scroll-slim::-webkit-scrollbar { width: 6px; }
+  .scroll-slim::-webkit-scrollbar-thumb { background: rgb(23 59 53 / .2); border-radius: 999px; }
+}
