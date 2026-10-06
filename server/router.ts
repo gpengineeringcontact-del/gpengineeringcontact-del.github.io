@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getDb } from "./queries/connection.js";
 import { contactMessages, directMessages, typingStatuses, users } from "../db/schema.js";
 import { authedQuery, adminQuery } from "./middleware.js";
-import { and, desc, eq, gt, ilike, ne, or } from "drizzle-orm";
+import { and, desc, eq, gt, ilike, isNull, ne, or } from "drizzle-orm";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -32,6 +32,13 @@ export const appRouter = createRouter({
         limit: 100,
       });
     }),
+    unreadCount: authedQuery.query(async ({ ctx }) => {
+      const rows = await getDb().query.directMessages.findMany({
+        where: and(eq(directMessages.recipientId, ctx.user.id), isNull(directMessages.readAt)),
+        columns: { id: true },
+      });
+      return { count: rows.length };
+    }),
     searchUsers: authedQuery.input(z.object({ query: z.string().min(1).max(60) })).query(async ({ ctx, input }) => {
       const query = `%${input.query.trim().toLowerCase()}%`;
       return getDb().query.users.findMany({
@@ -50,8 +57,11 @@ export const appRouter = createRouter({
     }),
     sendDirect: authedQuery.input(z.object({ recipientId: z.number().int().positive(), body: z.string().min(1).max(5000) })).mutation(async ({ ctx, input }) => {
       if (ctx.user.id === input.recipientId) throw new Error("Du kannst dir nicht selbst schreiben.");
-      await getDb().insert(directMessages).values({ senderId: ctx.user.id, recipientId: input.recipientId, subject: "Nachricht", body: input.body });
-      await getDb().delete(typingStatuses).where(and(eq(typingStatuses.userId, ctx.user.id), eq(typingStatuses.recipientId, input.recipientId)));
+      const db = getDb();
+      const recipient = await db.query.users.findFirst({ where: and(eq(users.id, input.recipientId), eq(users.isActive, true)) });
+      if (!recipient) throw new Error("Dieser Nutzer ist nicht verfügbar.");
+      await db.insert(directMessages).values({ senderId: ctx.user.id, recipientId: recipient.id, subject: "Nachricht", body: input.body });
+      await db.delete(typingStatuses).where(and(eq(typingStatuses.userId, ctx.user.id), eq(typingStatuses.recipientId, recipient.id)));
       return { ok: true };
     }),
     setTyping: authedQuery.input(z.object({ recipientId: z.number().int().positive(), typing: z.boolean() })).mutation(async ({ ctx, input }) => {
@@ -70,6 +80,10 @@ export const appRouter = createRouter({
     }),
     markRead: authedQuery.input(z.object({ messageId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       await getDb().update(directMessages).set({ readAt: new Date() }).where(and(eq(directMessages.id, input.messageId), eq(directMessages.recipientId, ctx.user.id)));
+      return { ok: true };
+    }),
+    markConversationRead: authedQuery.input(z.object({ userId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+      await getDb().update(directMessages).set({ readAt: new Date() }).where(and(eq(directMessages.senderId, input.userId), eq(directMessages.recipientId, ctx.user.id), isNull(directMessages.readAt)));
       return { ok: true };
     }),
     adminReply: adminQuery.input(z.object({

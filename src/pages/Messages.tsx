@@ -12,6 +12,7 @@ export default function Messages() {
   const conversation = trpc.contact.conversation.useQuery({ userId: selectedId! }, { enabled: !!selectedId, refetchInterval: 3000 });
   const selected = search.data?.find((item) => item.id === selectedId);
   const send = trpc.contact.sendDirect.useMutation({ onSuccess: async () => { setText(""); await conversation.refetch(); } });
+  const markConversationRead = trpc.contact.markConversationRead.useMutation();
   const setTyping = trpc.contact.setTyping.useMutation();
   const typing = trpc.contact.isTyping.useQuery({ userId: selectedId! }, { enabled: !!selectedId, refetchInterval: 2000 });
 
@@ -20,6 +21,10 @@ export default function Messages() {
     const timer = window.setTimeout(() => setTyping.mutate({ recipientId: selectedId, typing: true }), 250);
     return () => window.clearTimeout(timer);
   }, [text, selectedId]);
+
+  useEffect(() => {
+    if (selectedId) markConversationRead.mutate({ userId: selectedId });
+  }, [selectedId]);
 
   if (isLoading || !user) return <main className="min-h-screen bg-cream p-8" />;
   return <main className="min-h-screen bg-cream px-5 py-8 sm:px-8"><div className="mx-auto max-w-5xl">

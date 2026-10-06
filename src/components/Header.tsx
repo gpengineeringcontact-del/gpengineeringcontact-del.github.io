@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { BrandMark } from "./BrandMark";
+import { trpc } from "@/providers/trpc";
 
 const ROLE_LABEL: Record<string, string> = {
   planung: "Plant das Auslandsjahr",
@@ -10,6 +11,7 @@ const ROLE_LABEL: Record<string, string> = {
 
 export function Header({ onOpenUpload }: { onOpenUpload: () => void }) {
   const { user, isAuthenticated, logout } = useAuth();
+  const unread = trpc.contact.unreadCount.useQuery(undefined, { enabled: isAuthenticated, refetchInterval: 5000 });
 
   return (
     <>
@@ -49,7 +51,7 @@ export function Header({ onOpenUpload }: { onOpenUpload: () => void }) {
                     Konto
                   </Link>
                   <Link to="/nachrichten" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
-                    Nachrichten
+                    Nachrichten{(unread.data?.count ?? 0) > 0 && <span className="ml-1 inline-flex min-w-4 justify-center rounded-full bg-tang px-1 text-[10px] text-forest">{unread.data?.count}</span>}
                   </Link>
                   {user.role === "admin" && <Link to="/admin" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
                     Admin
