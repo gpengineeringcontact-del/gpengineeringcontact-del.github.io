@@ -19,6 +19,8 @@ export const users = pgTable("users", {
   membershipStatus: varchar("membershipStatus", { length: 20 }).default("free").notNull(),
   membershipPlan: varchar("membershipPlan", { length: 80 }),
   membershipRenewalAt: timestamp("membershipRenewalAt"),
+  stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
+  stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
   exchangeRole: varchar("exchangeRole", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")

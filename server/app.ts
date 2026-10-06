@@ -4,6 +4,7 @@ import { bodyLimit } from "hono/body-limit";
 import { fetchRequestHandler } from "@trpc/server/adapters/fetch";
 import { appRouter } from "./router.js";
 import { createContext } from "./context.js";
+import { createCheckoutSession, handleStripeWebhook } from "./stripe.js";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
@@ -16,6 +17,8 @@ app.use("/api/trpc/*", async (c) =>
     createContext,
   }),
 );
+app.post("/api/stripe/checkout", (c) => createCheckoutSession(c.req.raw));
+app.post("/api/stripe/webhook", (c) => handleStripeWebhook(c.req.raw));
 app.all("/api/*", (c) => c.json({ error: "Not Found" }, 404));
 
 export default app;

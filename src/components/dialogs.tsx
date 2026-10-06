@@ -271,6 +271,23 @@ export function RoleDialog({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------- Upgrade
 export function UpgradeDialog({ onClose }: { onClose: () => void }) {
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const startCheckout = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const response = await fetch("/api/stripe/checkout", { method: "POST", credentials: "include" });
+      if (!response.ok) {
+        const body = await response.json().catch(() => null) as { error?: string } | null;
+        throw new Error(body?.error ?? "Checkout konnte nicht gestartet werden.");
+      }
+      window.location.assign(response.url);
+    } catch (checkoutError) {
+      setError(checkoutError instanceof Error ? checkoutError.message : "Checkout konnte nicht gestartet werden.");
+      setLoading(false);
+    }
+  };
   return (
     <ModalShell title="Wyfare Zugang" onClose={onClose}>
       <p className="font-hand text-3xl leading-snug">
@@ -281,9 +298,10 @@ export function UpgradeDialog({ onClose }: { onClose: () => void }) {
         liken und kommentieren. Später kommen die Vergleichsplattform für
         Auslandsjahr-Agenturen und der persönliche Wyfare-RAG-Berater hinzu.
       </p>
-      <a href="/login" className="btn-tang mt-6 w-full">
-        Zugang vormerken
-      </a>
+      {error && <p className="mt-4 text-sm font-medium text-tang-dark">{error}</p>}
+      <button onClick={startCheckout} disabled={loading} className="btn-tang mt-6 w-full">
+        {loading ? "Checkout wird geöffnet …" : "Für 25 € freischalten"}
+      </button>
       <button onClick={onClose} className="mt-3 w-full py-2 text-sm font-medium text-sagedark hover:text-forest">
         Vielleicht später
       </button>

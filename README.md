@@ -32,6 +32,9 @@ npm run build
 ```env
 DATABASE_URL=mysql://USER:PASSWORD@HOST:3306/DATABASE
 SESSION_SECRET=<mindestens 48 zufällige Bytes>
+APP_URL=https://www.wyfare.com
+STRIPE_SECRET_KEY=
+STRIPE_WEBHOOK_SECRET=
 NODE_ENV=development
 VITE_GOOGLE_AUTH_URL=https://DEINE-DOMAIN/api/auth/oauth/google
 VITE_APPLE_AUTH_URL=https://DEINE-DOMAIN/api/auth/oauth/apple
@@ -46,6 +49,12 @@ openssl rand -base64 48
 `.env` niemals committen oder im Frontend verwenden. Nur Variablen mit
 `VITE_` werden in den Browser eingebaut; Provider-Client-Secrets bleiben
 ausschließlich serverseitig.
+
+Der einmalige Wyfare-Zugang wird über `POST /api/stripe/checkout` bezahlt.
+Stripe ruft nach erfolgreicher Zahlung `POST /api/stripe/webhook` auf. Der
+signaturgeprüfte Webhook setzt das Konto serverseitig auf
+`membershipStatus=active`. `STRIPE_SECRET_KEY` und `STRIPE_WEBHOOK_SECRET`
+gehören ausschließlich in Vercel bzw. die lokale `.env`.
 
 ## 3. Datenbank und Migrationen
 
