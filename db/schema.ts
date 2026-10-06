@@ -123,6 +123,19 @@ export const licenseRequests = pgTable("license_requests", {
 
 export type LicenseRequest = typeof licenseRequests.$inferSelect;
 
+export const travelReports = pgTable("travel_reports", {
+  id: serial("id").primaryKey(),
+  authorId: integer("authorId").notNull().references(() => users.id),
+  title: varchar("title", { length: 255 }).notNull(),
+  body: text("body").notNull(),
+  country: varchar("country", { length: 120 }).notNull(),
+  locationLabel: varchar("locationLabel", { length: 160 }),
+  imageUrl: text("imageUrl"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type TravelReport = typeof travelReports.$inferSelect;
+
 export const contactMessages = pgTable("contact_messages", {
   id: serial("id").primaryKey(),
   userId: integer("userId").references(() => users.id),

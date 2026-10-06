@@ -3,7 +3,7 @@ import { TRPCError } from "@trpc/server";
 import { and, desc, eq, ne } from "drizzle-orm";
 import { createRouter, publicQuery, authedQuery, memberQuery, adminQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
-import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, users } from "../db/schema.js";
+import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, travelReports, users } from "../db/schema.js";
 import { sendAdminMessageEmail } from "./lib/email.js";
 import { uploadPostImage } from "./lib/storage.js";
 
@@ -176,6 +176,47 @@ export const forumRouter = createRouter({
         threadId: input.threadId,
         authorId: ctx.user.id,
         content: input.content,
+      });
+      return { ok: true };
+    }),
+
+  listTravelReports: publicQuery.query(async () => {
+    const rows = await getDb().query.travelReports.findMany({
+      orderBy: [desc(travelReports.createdAt)],
+      with: { author: true },
+      limit: 60,
+    });
+    return rows.map((report) => ({
+      ...report,
+      authorName: report.author?.name ?? "Community",
+    }));
+  }),
+
+  createTravelReport: memberQuery
+    .input(z.object({
+      title: z.string().min(5).max(255),
+      body: z.string().min(50).max(12000),
+      country: z.enum(COUNTRIES),
+      locationLabel: z.string().max(160).optional(),
+      imageBase64: z.string().optional(),
+      imageName: z.string().max(120).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      let imageUrl: string | undefined;
+      if (input.imageBase64) {
+        const buffer = Buffer.from(input.imageBase64, "base64");
+        if (buffer.byteLength > MAX_IMAGE_BYTES) throw new TRPCError({ code: "BAD_REQUEST", message: "Bild ist größer als 4 MB." });
+        const extension = (input.imageName ?? "report.jpg").split(".").pop()?.toLowerCase() ?? "jpg";
+        const mime = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "image/jpeg";
+        imageUrl = await uploadPostImage(buffer, extension, mime);
+      }
+      await getDb().insert(travelReports).values({
+        authorId: ctx.user.id,
+        title: input.title.trim(),
+        body: input.body.trim(),
+        country: input.country,
+        locationLabel: input.locationLabel?.trim() || null,
+        imageUrl: imageUrl ?? null,
       });
       return { ok: true };
     }),

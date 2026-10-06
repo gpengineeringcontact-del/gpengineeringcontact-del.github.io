@@ -1,64 +1,31 @@
-import { IconLock, IconPlane } from "./icons";
-import { useNavigate } from "react-router";
+import { useState } from "react";
+import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
+import { IconClose, IconPlane } from "./icons";
+
+const COUNTRIES = ["USA", "Kanada", "Neuseeland", "Großbritannien", "Irland", "Australien", "Japan", "Spanien", "Frankreich", "Anderes Land"] as const;
 
 export function Journals({ onUpgrade }: { onUpgrade: () => void }) {
   const { isAuthenticated, isMember } = useAuth();
-  const navigate = useNavigate();
-  const openReport = () => {
-    if (!isAuthenticated) navigate("/login");
-    else if (!isMember) onUpgrade();
+  const [open, setOpen] = useState(false);
+  const reports = trpc.forum.listTravelReports.useQuery();
+  const create = trpc.forum.createTravelReport.useMutation({ onSuccess: async () => { setOpen(false); await reports.refetch(); } });
+
+  const startCreate = () => {
+    if (!isAuthenticated || !isMember) { onUpgrade(); return; }
+    setOpen(true);
   };
-  return (
-    <section className="mx-auto max-w-3xl">
-      <p className="label-caps mb-3 text-tang">Reiseberichte</p>
-      <h1 className="display-xl mb-10 text-4xl sm:text-5xl">Geschichten, die bleiben</h1>
 
-      <article className="card-offset overflow-hidden">
-        <div className="relative">
-          <img
-            src="https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&q=80&w=1200"
-            alt="Japan"
-            className="h-64 w-full border-b-2 border-forest object-cover sm:h-80"
-          />
-          <span className="absolute left-5 top-5 -rotate-2 border-2 border-forest bg-tang px-3 py-1.5 label-caps text-cream">
-            Erfahrungsbericht
-          </span>
-        </div>
-        <div className="p-6 sm:p-10">
-          <p className="label-caps mb-4 text-sagedark">Lesezeit: 4 Minuten · Japan</p>
-          <h2 className="font-display text-2xl font-bold leading-tight tracking-tight sm:text-3xl">
-            Mein erster Monat in Japan: Kulturschock & Gastfreundschaft
-          </h2>
-          <p className="mt-5 leading-relaxed text-forest/85">
-            <span className="float-left mr-3 font-display text-6xl font-bold leading-[0.8] text-tang">
-              D
-            </span>
-            ie ersten Wochen waren intensiv. Alles ist anders: die Sprache, das Essen,
-            die Regeln in der Schule. Aber meine Gastfamilie hat mir extrem geholfen,
-            mich einzugewöhnen – vom gemeinsamen Abendessen bis zu den kleinen Ritualen,
-            die niemand in einem Reiseführer erklärt …
-          </p>
+  return <section className="mx-auto max-w-5xl">
+    <div className="mb-8 flex flex-wrap items-end justify-between gap-4"><div><p className="label-caps mb-3 text-tang">Reiseberichte</p><h1 className="display-xl text-4xl sm:text-5xl">Geschichten, die bleiben</h1><p className="mt-4 max-w-xl text-sm leading-relaxed text-sagedark">Echte Erfahrungen aus der Community – von der ersten Ankunft bis zum letzten Abend.</p></div><button className="btn-tang" onClick={startCreate}>{isMember ? "Bericht schreiben" : "Als Premium schreiben"}</button></div>
+    {!isMember && <div className="card-offset mb-6 flex flex-wrap items-center justify-between gap-4 bg-forest p-6 text-cream"><div><p className="font-display text-xl font-bold">Deine Geschichte gehört hierher.</p><p className="mt-1 text-sm text-cream/70">Mit dem Premium-Zugang kannst du eigene Reiseberichte und Bilder veröffentlichen.</p></div><button className="btn-tang" onClick={onUpgrade}>Premium freischalten</button></div>}
+    {reports.isLoading ? <div className="card-offset p-8 text-center text-sagedark">Berichte werden geladen …</div> : reports.data?.length ? <div className="grid gap-5 md:grid-cols-2">{reports.data.map((report) => <article key={report.id} className="card-offset overflow-hidden">{report.imageUrl && <img src={report.imageUrl} alt="" className="h-52 w-full object-cover" />}<div className="p-6"><p className="label-caps text-sagedark">{report.country}{report.locationLabel ? ` · ${report.locationLabel}` : ""} · von {report.authorName}</p><h2 className="mt-2 font-display text-2xl font-bold text-forest">{report.title}</h2><p className="mt-4 whitespace-pre-wrap text-sm leading-relaxed text-forest/85">{report.body}</p></div></article>)}</div> : <div className="card-offset p-10 text-center"><div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-tang/30 text-2xl">✦</div><h2 className="mt-4 font-display text-2xl font-bold text-forest">Noch keine Reiseberichte</h2><p className="mt-2 text-sm text-sagedark">Sei die erste Person und erzähl der Community von deinem Auslandsjahr.</p></div>}
+    {open && <ReportDialog onClose={() => setOpen(false)} onSubmit={(input) => create.mutate(input)} pending={create.isPending} />}
+  </section>;
+}
 
-          {/* Conversion-Bridge */}
-          <div className="relative mt-10 overflow-hidden border-2 border-forest bg-forest p-6 text-cream sm:p-8">
-            <div className="pointer-events-none absolute -right-6 -top-8 rotate-12 opacity-20">
-              <IconPlane className="h-32 w-32 text-tang" />
-            </div>
-            <h3 className="relative flex items-center gap-2.5 font-display text-lg font-bold">
-              <IconLock className="h-5 w-5 text-tang" />
-              Neugierig, mit wem ich gereist bin?
-            </h3>
-            <p className="relative mt-3 max-w-md text-sm leading-relaxed text-cream/75">
-              Der vollständige Bericht, Organisations-Vergleiche und Recherchetools
-              gehören zum Wyfare Zugang.
-            </p>
-            <button onClick={openReport} className="btn-tang relative mt-6">
-              {isMember ? "Bericht vollständig öffnen" : isAuthenticated ? "Für 25 € freischalten" : "Anmelden und weiterlesen"}
-            </button>
-          </div>
-        </div>
-      </article>
-    </section>
-  );
+function ReportDialog({ onClose, onSubmit, pending }: { onClose: () => void; onSubmit: (input: { title: string; body: string; country: (typeof COUNTRIES)[number]; locationLabel?: string; imageBase64?: string; imageName?: string }) => void; pending: boolean }) {
+  const [title, setTitle] = useState(""); const [body, setBody] = useState(""); const [country, setCountry] = useState<(typeof COUNTRIES)[number]>("USA"); const [locationLabel, setLocationLabel] = useState(""); const [image, setImage] = useState<{ base64: string; name: string; preview: string } | null>(null); const [error, setError] = useState("");
+  const choose = (file: File) => { if (file.size > 4 * 1024 * 1024) { setError("Das Bild darf maximal 4 MB groß sein."); return; } const reader = new FileReader(); reader.onload = () => { const result = String(reader.result); setImage({ base64: result.split(",")[1], name: file.name, preview: result }); }; reader.readAsDataURL(file); };
+  return <div className="fixed inset-0 z-50 flex items-center justify-center bg-forest/70 p-4" onClick={onClose}><div className="card-offset max-h-[90vh] w-full max-w-2xl overflow-y-auto p-6 sm:p-8" onClick={(event) => event.stopPropagation()}><div className="mb-5 flex items-center justify-between"><h2 className="font-display text-2xl font-bold text-forest">Reisebericht schreiben</h2><button onClick={onClose} aria-label="Schließen"><IconClose className="h-5 w-5" /></button></div><form className="space-y-4" onSubmit={(event) => { event.preventDefault(); if (title.trim() && body.trim().length >= 50) onSubmit({ title, body, country, locationLabel: locationLabel || undefined, imageBase64: image?.base64, imageName: image?.name }); }}><input className="input-line" placeholder="Titel deines Berichts" value={title} onChange={(event) => setTitle(event.target.value)} required minLength={5} /><textarea className="input-line min-h-56 resize-y" placeholder="Erzähl der Community von deinem Erlebnis (mindestens 50 Zeichen) …" value={body} onChange={(event) => setBody(event.target.value)} required minLength={50} /><div className="grid gap-4 sm:grid-cols-2"><select className="input-line" value={country} onChange={(event) => setCountry(event.target.value as (typeof COUNTRIES)[number])}>{COUNTRIES.map((item) => <option key={item}>{item}</option>)}</select><input className="input-line" placeholder="Ort (optional)" value={locationLabel} onChange={(event) => setLocationLabel(event.target.value)} /></div><label className="block cursor-pointer rounded-xl border-2 border-dashed border-forest/25 p-5 text-center text-sm text-sagedark"><input type="file" accept="image/*" className="hidden" onChange={(event) => event.target.files?.[0] && choose(event.target.files[0])} />{image ? <img src={image.preview} alt="Vorschau" className="mx-auto max-h-48 object-cover" /> : "Optional ein Bild hinzufügen (max. 4 MB)"}</label>{error && <p className="text-sm text-red-700">{error}</p>}<div className="flex justify-end gap-2"><button type="button" className="btn-outline" onClick={onClose}>Abbrechen</button><button type="submit" className="btn-tang" disabled={pending || body.trim().length < 50}><IconPlane className="h-4 w-4" />{pending ? "Wird veröffentlicht …" : "Bericht veröffentlichen"}</button></div></form></div></div>;
 }
