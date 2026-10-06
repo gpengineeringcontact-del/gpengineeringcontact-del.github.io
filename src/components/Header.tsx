@@ -45,6 +45,12 @@ export function Header({ onOpenUpload }: { onOpenUpload: () => void }) {
                   >
                     Abmelden
                   </button>
+                  <Link to="/konto" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
+                    Konto
+                  </Link>
+                  {user.role === "admin" && <Link to="/admin" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
+                    Admin
+                  </Link>}
                 </div>
               </>
             ) : (

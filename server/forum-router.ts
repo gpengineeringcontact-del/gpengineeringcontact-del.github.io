@@ -1,9 +1,9 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { and, desc, eq } from "drizzle-orm";
-import { createRouter, publicQuery, authedQuery, memberQuery } from "./middleware.js";
+import { createRouter, publicQuery, authedQuery, memberQuery, adminQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
-import { posts, postLikes, threads, threadReplies, licenseRequests, users } from "../db/schema.js";
+import { posts, postLikes, threads, threadReplies, licenseRequests, reports, users } from "../db/schema.js";
 
 const COUNTRIES = [
   "USA",
@@ -196,6 +196,49 @@ export const forumRouter = createRouter({
         email: input.email,
         message: input.message ?? null,
       });
+      return { ok: true };
+    }),
+
+  reportPost: authedQuery
+    .input(z.object({
+      postId: z.number().int().positive(),
+      reason: z.enum(["spam", "harassment", "copyright", "unsafe", "other"]),
+      details: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb().insert(reports).values({ reporterId: ctx.user.id, postId: input.postId, reason: input.reason, details: input.details ?? null });
+      return { ok: true };
+    }),
+
+  reportThread: authedQuery
+    .input(z.object({
+      threadId: z.number().int().positive(),
+      reason: z.enum(["spam", "harassment", "unsafe", "other"]),
+      details: z.string().max(1000).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      await getDb().insert(reports).values({ reporterId: ctx.user.id, threadId: input.threadId, reason: input.reason, details: input.details ?? null });
+      return { ok: true };
+    }),
+
+  listReports: adminQuery.query(async () => getDb().query.reports.findMany({
+    where: eq(reports.status, "open"),
+    with: { reporter: true, post: true, thread: true },
+    orderBy: [desc(reports.createdAt)],
+    limit: 100,
+  })),
+
+  resolveReport: adminQuery
+    .input(z.object({ reportId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await getDb().update(reports).set({ status: "resolved", resolvedAt: new Date() }).where(eq(reports.id, input.reportId));
+      return { ok: true };
+    }),
+
+  deactivateUser: adminQuery
+    .input(z.object({ userId: z.number().int().positive() }))
+    .mutation(async ({ input }) => {
+      await getDb().update(users).set({ isActive: false }).where(eq(users.id, input.userId));
       return { ok: true };
     }),
 

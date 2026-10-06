@@ -11,7 +11,14 @@ import { databaseErrorMessage } from "./lib/database-errors.js";
 
 const app = new Hono<{ Bindings: HttpBindings }>();
 
-app.use(bodyLimit({ maxSize: 50 * 1024 * 1024 }));
+app.use("*", async (c, next) => {
+  await next();
+  c.header("X-Content-Type-Options", "nosniff");
+  c.header("X-Frame-Options", "DENY");
+  c.header("Referrer-Policy", "strict-origin-when-cross-origin");
+  c.header("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+});
+app.use(bodyLimit({ maxSize: 8 * 1024 * 1024 }));
 app.use("/api/trpc/*", async (c) =>
   fetchRequestHandler({
     endpoint: "/api/trpc",

@@ -1,15 +1,16 @@
 import * as cookie from "cookie";
-import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from "node:crypto";
+import { createHash, randomBytes, scrypt as nodeScrypt, timingSafeEqual } from "node:crypto";
 import { promisify } from "node:util";
 import { z } from "zod";
 import { Session } from "../contracts/constants.js";
 import { getSessionCookieOptions } from "./lib/cookies.js";
 import { createRouter, authedQuery, publicQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
-import { users } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { passwordResetTokens, posts, threads, users } from "../db/schema.js";
+import { and, eq, gt, isNull } from "drizzle-orm";
 import { signSessionToken } from "./session.js";
 import { databaseErrorMessage } from "./lib/database-errors.js";
+import { sendPasswordResetEmail, sendRegistrationEmail } from "./lib/email.js";
 
 const scrypt = promisify(nodeScrypt);
 
@@ -27,6 +28,10 @@ async function verifyPassword(password: string, stored: string) {
   return expected.length === derived.length && timingSafeEqual(expected, derived);
 }
 
+function hashResetToken(token: string) {
+  return createHash("sha256").update(token).digest("hex");
+}
+
 async function setSession(ctx: { resHeaders: Headers }, email: string) {
   const token = await signSessionToken({ unionId: `email:${email}`, clientId: "wyfare" });
   const opts = getSessionCookieOptions(new Headers());
@@ -37,6 +42,36 @@ async function setSession(ctx: { resHeaders: Headers }, email: string) {
 }
 
 export const authRouter = createRouter({
+  requestPasswordReset: publicQuery.input(z.object({
+    email: z.string().email().max(320),
+  })).mutation(async ({ input }) => {
+    const email = input.email.trim().toLowerCase();
+    const user = await getDb().query.users.findFirst({ where: eq(users.email, email) });
+    if (user?.email) {
+      const token = randomBytes(32).toString("hex");
+      await getDb().insert(passwordResetTokens).values({
+        userId: user.id,
+        tokenHash: hashResetToken(token),
+        expiresAt: new Date(Date.now() + 30 * 60 * 1000),
+      });
+      await sendPasswordResetEmail(user.email, token);
+    }
+    return { success: true };
+  }),
+  resetPassword: publicQuery.input(z.object({
+    token: z.string().min(32).max(128),
+    password: z.string().min(8).max(128),
+  })).mutation(async ({ input }) => {
+    const tokenHash = hashResetToken(input.token);
+    const db = getDb();
+    const reset = await db.query.passwordResetTokens.findFirst({
+      where: and(eq(passwordResetTokens.tokenHash, tokenHash), isNull(passwordResetTokens.usedAt), gt(passwordResetTokens.expiresAt, new Date())),
+    });
+    if (!reset) throw new Error("Der Passwort-Link ist ungültig oder abgelaufen.");
+    await db.update(users).set({ passwordHash: await hashPassword(input.password) }).where(eq(users.id, reset.userId));
+    await db.update(passwordResetTokens).set({ usedAt: new Date() }).where(eq(passwordResetTokens.id, reset.id));
+    return { success: true };
+  }),
   register: publicQuery.input(z.object({
     name: z.string().min(2).max(255),
     email: z.string().email().max(320),
@@ -51,15 +86,17 @@ export const authRouter = createRouter({
       throw new Error(databaseErrorMessage(error));
     }
     if (existing) throw new Error("Für diese E-Mail-Adresse gibt es bereits ein Konto.");
+    const normalizedEmail = input.email.toLowerCase();
     await db.insert(users).values({
-      unionId: `email:${input.email.toLowerCase()}`,
+      unionId: `email:${normalizedEmail}`,
       name: input.name.trim(),
-      email: input.email.toLowerCase(),
+      email: normalizedEmail,
       passwordHash: await hashPassword(input.password),
       membershipPlan: input.plan,
       lastSignInAt: new Date(),
     });
-    await setSession(ctx, input.email.toLowerCase());
+    await sendRegistrationEmail(normalizedEmail, input.name.trim());
+    await setSession(ctx, normalizedEmail);
     return { success: true };
   }),
   login: publicQuery.input(z.object({
@@ -76,6 +113,35 @@ export const authRouter = createRouter({
     return { success: true };
   }),
   me: authedQuery.query((opts) => opts.ctx.user),
+  updateProfile: authedQuery.input(z.object({
+    name: z.string().min(2).max(255),
+    exchangeRole: z.enum(["planung", "im_ausland", "alumni"]).nullable(),
+  })).mutation(async ({ ctx, input }) => {
+    await getDb().update(users).set({ name: input.name.trim(), exchangeRole: input.exchangeRole }).where(eq(users.id, ctx.user.id));
+    return { success: true };
+  }),
+  changePassword: authedQuery.input(z.object({
+    currentPassword: z.string().min(1).max(128),
+    newPassword: z.string().min(8).max(128),
+  })).mutation(async ({ ctx, input }) => {
+    if (!ctx.user.passwordHash || !(await verifyPassword(input.currentPassword, ctx.user.passwordHash))) {
+      throw new Error("Das aktuelle Passwort stimmt nicht.");
+    }
+    await getDb().update(users).set({ passwordHash: await hashPassword(input.newPassword) }).where(eq(users.id, ctx.user.id));
+    return { success: true };
+  }),
+  exportData: authedQuery.query(async ({ ctx }) => {
+    const db = getDb();
+    const [ownPosts, ownThreads] = await Promise.all([
+      db.query.posts.findMany({ where: eq(posts.authorId, ctx.user.id) }),
+      db.query.threads.findMany({ where: eq(threads.authorId, ctx.user.id) }),
+    ]);
+    return { user: { ...ctx.user, passwordHash: null }, posts: ownPosts, threads: ownThreads };
+  }),
+  deleteAccount: authedQuery.mutation(async ({ ctx }) => {
+    await getDb().update(users).set({ isActive: false, email: null, name: "Gelöschtes Konto", passwordHash: null }).where(eq(users.id, ctx.user.id));
+    return { success: true };
+  }),
   logout: authedQuery.mutation(async ({ ctx }) => {
     const opts = getSessionCookieOptions(ctx.req.headers);
     ctx.resHeaders.append(

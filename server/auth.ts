@@ -9,6 +9,6 @@ export async function authenticateRequest(headers: Headers) {
   const claim = token ? await verifySessionToken(token) : null;
   if (!claim) throw Errors.forbidden("Invalid authentication token.");
   const user = await findUserByUnionId(claim.unionId);
-  if (!user) throw Errors.forbidden("User not found. Please log in again.");
+  if (!user || !user.isActive) throw Errors.forbidden("User not found. Please log in again.");
   return user;
 }

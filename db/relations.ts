@@ -1,11 +1,13 @@
 import { relations } from "drizzle-orm";
-import { users, posts, postLikes, threads, threadReplies, licenseRequests } from "./schema.js";
+import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports } from "./schema.js";
 
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
   likes: many(postLikes),
   threads: many(threads),
   replies: many(threadReplies),
+  passwordResetTokens: many(passwordResetTokens),
+  reports: many(reports),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -31,4 +33,14 @@ export const threadRepliesRelations = relations(threadReplies, ({ one }) => ({
 
 export const licenseRequestsRelations = relations(licenseRequests, ({ one }) => ({
   post: one(posts, { fields: [licenseRequests.postId], references: [posts.id] }),
+}));
+
+export const passwordResetTokensRelations = relations(passwordResetTokens, ({ one }) => ({
+  user: one(users, { fields: [passwordResetTokens.userId], references: [users.id] }),
+}));
+
+export const reportsRelations = relations(reports, ({ one }) => ({
+  reporter: one(users, { fields: [reports.reporterId], references: [users.id] }),
+  post: one(posts, { fields: [reports.postId], references: [posts.id] }),
+  thread: one(threads, { fields: [reports.threadId], references: [threads.id] }),
 }));

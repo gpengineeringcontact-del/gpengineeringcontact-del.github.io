@@ -30,7 +30,7 @@ const requireMember = t.middleware(async (opts) => {
   if (opts.ctx.user.membershipStatus !== "active") {
     throw new TRPCError({
       code: "FORBIDDEN",
-      message: "Diese Community-Funktion ist Teil des Wyfare-Zugangs für 25 € pro Monat.",
+      message: "Diese Community-Funktion ist Teil des einmaligen Wyfare-Zugangs für 25 €.",
     });
   }
   return opts.next({ ctx: { ...opts.ctx, user: opts.ctx.user } });

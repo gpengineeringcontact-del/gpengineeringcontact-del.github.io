@@ -4,6 +4,7 @@ import { users } from "../db/schema.js";
 import { getDb } from "./queries/connection.js";
 import { env } from "./lib/env.js";
 import { authenticateRequest } from "./auth.js";
+import { sendPurchaseConfirmationEmail } from "./lib/email.js";
 
 const PRICE_CENTS = 2500;
 
@@ -105,12 +106,23 @@ export async function handleStripeWebhook(request: Request) {
     const session = event.data?.object;
     const userId = Number(session?.metadata?.userId);
     if (session?.payment_status === "paid" && Number.isInteger(userId) && userId > 0) {
-      await getDb().update(users).set({
+      const db = getDb();
+      const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+      if (!user || (user.membershipStatus === "active" && user.purchaseConfirmationSentAt)) {
+        return new Response(JSON.stringify({ received: true }), {
+          headers: { "content-type": "application/json" },
+        });
+      }
+      await db.update(users).set({
         membershipStatus: "active",
         membershipPlan: "premium",
         stripeCustomerId: session.customer ?? null,
         stripeCheckoutSessionId: session.id ?? null,
       }).where(eq(users.id, userId));
+      if (user.email) {
+        await sendPurchaseConfirmationEmail(user.email, user.name ?? "Wyfare-Mitglied");
+        await db.update(users).set({ purchaseConfirmationSentAt: new Date() }).where(eq(users.id, userId));
+      }
     }
   }
   return new Response(JSON.stringify({ received: true }), {

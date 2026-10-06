@@ -15,4 +15,6 @@ export const env = {
   stripeSecretKey: process.env.STRIPE_SECRET_KEY ?? "",
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET ?? "",
   appUrl: process.env.APP_URL ?? "http://localhost:3000",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  mailFrom: process.env.MAIL_FROM ?? "",
 };

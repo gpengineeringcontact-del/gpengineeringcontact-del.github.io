@@ -93,6 +93,7 @@ export default function Login() {
             {error && <p className="text-sm text-red-700">{error}</p>}
             <button className="btn-tang mt-3 w-full" disabled={pending}>{pending ? "Einen Moment …" : mode === "login" ? "Anmelden" : "Konto erstellen"}</button>
           </form>
+          {mode === "login" && <Link to="/passwort-vergessen" className="mt-4 block text-center text-sm text-forest underline">Passwort vergessen?</Link>}
           <p className="mt-4 text-center text-[11px] text-sagedark">{mode === "register" && plan === "premium" ? "Einmalig 25 € · Zahlung wird im nächsten Schritt eingerichtet" : "Kostenlos · Feed lesen und Wyfare Q&A nutzen"}</p>
         </div>
       </div>

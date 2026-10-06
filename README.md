@@ -36,6 +36,8 @@ APP_URL=https://www.wyfare.com
 STRIPE_SECRET_KEY=
 STRIPE_WEBHOOK_SECRET=
 NODE_ENV=development
+RESEND_API_KEY=
+MAIL_FROM=Wyfare <noreply@deine-domain.de>
 VITE_GOOGLE_AUTH_URL=https://DEINE-DOMAIN/api/auth/oauth/google
 VITE_APPLE_AUTH_URL=https://DEINE-DOMAIN/api/auth/oauth/apple
 ```
@@ -66,6 +68,9 @@ Das Schema liegt in `db/schema.ts`. Es enthält unter anderem:
 - Q&A-Threads und Antworten
 - Bildrechte-Anfragen
 - Kontaktanfragen
+- Passwort-Reset-Tokens und Moderationsmeldungen
+- Transaktionsmails über Resend für Registrierung, Passwort-Reset und
+  bestätigte Wyfare-Zahlungen
 
 Für lokale Entwicklung:
 
@@ -126,6 +131,16 @@ angeschlossen. Für den Livebetrieb:
 7. Premium-Mutationen serverseitig geschützt lassen; UI-Sperren allein reichen
    nicht.
 
+Stripe bleibt für die aktuelle Beta ausdrücklich im Sandbox-Modus. Verwende
+dafür weiterhin `sk_test_...` und den passenden `whsec_...`-Webhook-Schlüssel.
+
+Resend verwendet dieselbe `MAIL_FROM`-Adresse für:
+
+- die Registrierungsbestätigung,
+- den Passwort-Reset,
+- die Bestätigung des einmaligen 25-€-Zugangs nach erfolgreicher
+  Stripe-Webhooksignaturprüfung.
+
 Empfohlene zusätzliche Variablen:
 
 ```env
@@ -178,6 +193,13 @@ Berechtigungs-Middleware. Das Forum muss dadurch nicht umgebaut werden.
 - OAuth `state`, `nonce` und Callback-Codes serverseitig validieren.
 - Stripe-Webhooks immer anhand der Signatur prüfen.
 - Eingaben mit Zod validieren und serverseitig autorisieren.
+- Passwort-Reset-Links sind gehasht gespeichert, nach 30 Minuten ungültig und
+  nur einmal verwendbar.
+- `RESEND_API_KEY` und `MAIL_FROM` werden für den echten Reset-Mailversand
+  benötigt; ohne diese Konfiguration meldet die API den fehlenden Dienst
+  ausdrücklich.
+- Kontodaten können über die Auth-API exportiert und pseudonymisiert gelöscht
+  werden. Moderations- und Admin-Aktionen sind serverseitig rollenbeschränkt.
 - Rate-Limits für Login, Upload, Kontakt und Chat einrichten.
 - Uploads auf Größe, MIME-Type und Inhalt prüfen.
 - Datenbank-Backups und Löschkonzept festlegen.

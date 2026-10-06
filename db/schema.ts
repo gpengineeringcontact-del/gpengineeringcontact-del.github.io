@@ -7,6 +7,7 @@ import {
   integer,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import { boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
@@ -21,6 +22,8 @@ export const users = pgTable("users", {
   membershipRenewalAt: timestamp("membershipRenewalAt"),
   stripeCustomerId: varchar("stripeCustomerId", { length: 255 }),
   stripeCheckoutSessionId: varchar("stripeCheckoutSessionId", { length: 255 }),
+  purchaseConfirmationSentAt: timestamp("purchaseConfirmationSentAt"),
+  isActive: boolean("isActive").default(true).notNull(),
   exchangeRole: varchar("exchangeRole", { length: 20 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
@@ -128,3 +131,24 @@ export const contactMessages = pgTable("contact_messages", {
 });
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
+
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id),
+  tokenHash: varchar("tokenHash", { length: 128 }).notNull().unique(),
+  expiresAt: timestamp("expiresAt").notNull(),
+  usedAt: timestamp("usedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export const reports = pgTable("reports", {
+  id: serial("id").primaryKey(),
+  reporterId: integer("reporterId").notNull().references(() => users.id),
+  postId: integer("postId").references(() => posts.id),
+  threadId: integer("threadId").references(() => threads.id),
+  reason: varchar("reason", { length: 80 }).notNull(),
+  details: text("details"),
+  status: varchar("status", { length: 20 }).default("open").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  resolvedAt: timestamp("resolvedAt"),
+});
