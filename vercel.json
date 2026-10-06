@@ -6,11 +6,5 @@
     "api/[[...route]].ts": {
       "includeFiles": "dist/public/**"
     }
-  },
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api"
-    }
-  ]
+  }
 }
