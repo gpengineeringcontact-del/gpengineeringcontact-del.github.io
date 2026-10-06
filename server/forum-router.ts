@@ -132,6 +132,7 @@ export const forumRouter = createRouter({
       title: t.title,
       body: t.body,
       createdAt: t.createdAt,
+      authorId: t.authorId,
       authorName: t.author?.name ?? "Community",
       replyCount: t.replies.length,
     }));
@@ -156,11 +157,13 @@ export const forumRouter = createRouter({
         title: thread.title,
         body: thread.body,
         createdAt: thread.createdAt,
+        authorId: thread.authorId,
         authorName: thread.author?.name ?? "Community",
         replies: thread.replies.map((r) => ({
           id: r.id,
           content: r.content,
           createdAt: r.createdAt,
+          authorId: r.authorId,
           authorName: r.author?.name ?? "Community",
         })),
       };

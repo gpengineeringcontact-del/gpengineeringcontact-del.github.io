@@ -26,6 +26,10 @@ export const users = pgTable("users", {
   purchaseConfirmationSentAt: timestamp("purchaseConfirmationSentAt"),
   isActive: boolean("isActive").default(true).notNull(),
   exchangeRole: varchar("exchangeRole", { length: 20 }),
+  age: integer("age"),
+  gender: varchar("gender", { length: 40 }),
+  desiredCountry: varchar("desiredCountry", { length: 120 }),
+  bio: text("bio"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt")
     .defaultNow()

@@ -9,6 +9,10 @@ export default function Account() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [exchangeRole, setExchangeRole] = useState<"planung" | "im_ausland" | "alumni" | "">("");
+  const [age, setAge] = useState("");
+  const [gender, setGender] = useState<"weiblich" | "männlich" | "divers" | "keine Angabe" | "">("");
+  const [desiredCountry, setDesiredCountry] = useState("");
+  const [bio, setBio] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [currentPassword, setCurrentPassword] = useState("");
@@ -19,6 +23,10 @@ export default function Account() {
       setName(user.name ?? "");
       setUsername(user.username ?? "");
       setExchangeRole((user.exchangeRole as typeof exchangeRole) ?? "");
+      setAge(user.age?.toString() ?? "");
+      setGender((user.gender as typeof gender) ?? "");
+      setDesiredCountry(user.desiredCountry ?? "");
+      setBio(user.bio ?? "");
     }
   }, [user]);
 
@@ -63,7 +71,7 @@ export default function Account() {
           <h2 className="text-2xl font-bold text-forest">Profil</h2>
           <form className="mt-5 space-y-4" onSubmit={(event) => {
             event.preventDefault();
-            updateProfile.mutate({ name, username, exchangeRole: exchangeRole || null });
+            updateProfile.mutate({ name, username, exchangeRole: exchangeRole || null, age: age ? Number(age) : null, gender: gender || null, desiredCountry: desiredCountry || null, bio: bio || null });
           }}>
             <input className="input-line" value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={255} required />
             <input className="input-line" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} minLength={3} maxLength={30} pattern="[a-zA-Z0-9_.-]{3,30}" required placeholder="Benutzername" />
@@ -73,6 +81,14 @@ export default function Account() {
               <option value="im_ausland">Ich bin gerade im Ausland</option>
               <option value="alumni">Ich bin Alumni</option>
             </select>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <input className="input-line" type="number" min={13} max={100} placeholder="Alter (optional)" value={age} onChange={(event) => setAge(event.target.value)} />
+              <select className="input-line" value={gender} onChange={(event) => setGender(event.target.value as typeof gender)}>
+                <option value="">Geschlecht nicht angeben</option><option value="weiblich">Weiblich</option><option value="männlich">Männlich</option><option value="divers">Divers</option><option value="keine Angabe">Keine Angabe</option>
+              </select>
+            </div>
+            <input className="input-line" placeholder="Wunschland oder Wunschregion" maxLength={120} value={desiredCountry} onChange={(event) => setDesiredCountry(event.target.value)} />
+            <textarea className="input-line min-h-28 resize-y" placeholder="Deine Bio – was sollte die Community über dich wissen?" maxLength={500} value={bio} onChange={(event) => setBio(event.target.value)} />
             <button className="btn-tang" disabled={updateProfile.isPending}>Profil speichern</button>
           </form>
         </section>

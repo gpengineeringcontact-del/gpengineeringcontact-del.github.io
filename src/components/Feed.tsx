@@ -54,6 +54,7 @@ function PostCard({
   onLicense: (post: FeedPost) => void;
   onOpen: (post: FeedPost) => void;
 }) {
+  const navigate = useNavigate();
   const rotation = index % 3 === 0 ? "-rotate-[1.6deg]" : index % 3 === 1 ? "rotate-[1.2deg]" : "-rotate-[0.7deg]";
 
   return (
@@ -75,13 +76,13 @@ function PostCard({
             <span className="flex h-7 w-7 items-center justify-center rounded-full bg-forest font-display text-[10px] font-bold uppercase text-cream">
               {post.authorName.slice(0, 2)}
             </span>
-            <div className="leading-tight">
-              <p className="text-[13px] font-semibold">{post.authorName}</p>
+            <button className="text-left leading-tight" onClick={(event) => { event.stopPropagation(); navigate(`/profil/${post.authorId}`); }}>
+              <p className="text-[13px] font-semibold hover:underline">{post.authorName}</p>
               <p className="text-[11px] text-sagedark">
                 {post.authorRole ? `${ROLE_LABEL[post.authorRole]} · ` : ""}
                 {timeAgo(post.createdAt)}
               </p>
-            </div>
+            </button>
           </div>
           <button
             onClick={(event) => { event.stopPropagation(); onLike(post.id); }}

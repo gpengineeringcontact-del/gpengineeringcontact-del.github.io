@@ -24,6 +24,10 @@ export async function ensureRuntimeSchema() {
     const db = getDb();
     compatibilityPromise = (async () => {
       await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "username" varchar(30)`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "age" integer`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "gender" varchar(40)`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "desiredCountry" varchar(120)`);
+      await db.execute(sql`ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "bio" text`);
       await db.execute(sql`CREATE UNIQUE INDEX IF NOT EXISTS "users_username_unique" ON "users" ("username")`);
       await db.execute(sql`ALTER TABLE "reports" ADD COLUMN IF NOT EXISTS "reportedUserId" integer REFERENCES "users"("id")`);
       await db.execute(sql`CREATE TABLE IF NOT EXISTS "user_blocks" ("id" serial PRIMARY KEY, "blockerId" integer NOT NULL REFERENCES "users"("id"), "blockedId" integer NOT NULL REFERENCES "users"("id"), "createdAt" timestamp DEFAULT now() NOT NULL)`);

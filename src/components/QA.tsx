@@ -172,7 +172,7 @@ export function QA({ onUpgrade, initialThreadId }: { onUpgrade: () => void; init
                     }`}
                   >
                     {t.replyCount} {t.replyCount === 1 ? "Antwort" : "Antworten"} · von{" "}
-                    {t.authorName}
+                    <span className="underline" onClick={(event) => { event.stopPropagation(); navigate(`/profil/${t.authorId}`); }}>{t.authorName}</span>
                   </p>
                 </button>
               ))}
@@ -271,13 +271,13 @@ export function QA({ onUpgrade, initialThreadId }: { onUpgrade: () => void; init
                 {threadQuery.data.body}
               </p>
             )}
-            <p className="label-caps text-sagedark">von {threadQuery.data?.authorName ?? "Community"}</p>
+            <p className="label-caps text-sagedark">von <button className="underline" onClick={() => threadQuery.data?.authorId && navigate(`/profil/${threadQuery.data.authorId}`)}>{threadQuery.data?.authorName ?? "Community"}</button></p>
 
             <div className="mt-6 space-y-4 border-t-2 border-forest/10 pt-5">
               {(threadQuery.data?.replies ?? []).map((r) => (
                 <div key={r.id} className="border-l-[3px] border-tang pl-4">
                   <p className="text-sm leading-relaxed">{r.content}</p>
-                  <p className="mt-1 text-[11px] text-sagedark">{r.authorName}</p>
+                  <p className="mt-1 text-[11px] text-sagedark"><button className="underline" onClick={() => navigate(`/profil/${r.authorId}`)}>{r.authorName}</button></p>
                 </div>
               ))}
               {!threadQuery.data && (

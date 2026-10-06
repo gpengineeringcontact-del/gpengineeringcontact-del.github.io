@@ -126,10 +126,14 @@ export const authRouter = createRouter({
     name: z.string().min(2).max(255),
     username: z.string().regex(/^[a-zA-Z0-9_.-]{3,30}$/),
     exchangeRole: z.enum(["planung", "im_ausland", "alumni"]).nullable(),
+    age: z.number().int().min(13).max(100).nullable(),
+    gender: z.enum(["weiblich", "männlich", "divers", "keine Angabe"]).nullable(),
+    desiredCountry: z.string().max(120).nullable(),
+    bio: z.string().max(500).nullable(),
   })).mutation(async ({ ctx, input }) => {
     const duplicate = await getDb().query.users.findFirst({ where: and(eq(users.username, input.username.toLowerCase()), ne(users.id, ctx.user.id)) });
     if (duplicate) throw new Error("Dieser Benutzername ist bereits vergeben.");
-    await getDb().update(users).set({ name: input.name.trim(), username: input.username.toLowerCase(), exchangeRole: input.exchangeRole }).where(eq(users.id, ctx.user.id));
+    await getDb().update(users).set({ name: input.name.trim(), username: input.username.toLowerCase(), exchangeRole: input.exchangeRole, age: input.age, gender: input.gender, desiredCountry: input.desiredCountry?.trim() || null, bio: input.bio?.trim() || null }).where(eq(users.id, ctx.user.id));
     return { success: true };
   }),
   changePassword: authedQuery.input(z.object({

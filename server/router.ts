@@ -83,7 +83,7 @@ export const appRouter = createRouter({
       if (!profile) throw new Error("Profil nicht gefunden.");
       const profilePosts = await db.query.posts.findMany({ where: eq(posts.authorId, input.userId), orderBy: [desc(posts.createdAt)], limit: 60 });
       const blocked = await db.query.userBlocks.findFirst({ where: and(eq(userBlocks.blockerId, ctx.user.id), eq(userBlocks.blockedId, input.userId)) });
-      return { user: { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar, exchangeRole: profile.exchangeRole }, posts: profilePosts, blocked: !!blocked };
+      return { user: { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar, exchangeRole: profile.exchangeRole, age: profile.age, gender: profile.gender, desiredCountry: profile.desiredCountry, bio: profile.bio }, posts: profilePosts, blocked: !!blocked };
     }),
     reportUser: authedQuery.input(z.object({ userId: z.number().int().positive(), reason: z.string().min(2).max(80), details: z.string().max(1000).optional() })).mutation(async ({ ctx, input }) => {
       if (ctx.user.id === input.userId) throw new Error("Du kannst dich nicht selbst melden.");

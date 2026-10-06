@@ -1,9 +1,11 @@
 import { Link, useParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Profile() {
   const { userId } = useParams();
+  const { user } = useAuth();
   const id = Number(userId);
   const profile = trpc.contact.profile.useQuery({ userId: id }, { enabled: Number.isInteger(id) && id > 0 });
   const [reported, setReported] = useState(false);
@@ -19,8 +21,8 @@ export default function Profile() {
   return <main className="min-h-screen bg-cream px-5 py-8 sm:px-8"><div className="mx-auto max-w-4xl">
     <Link to="/nachrichten" className="text-sm font-semibold text-forest underline">← Zurück zu Nachrichten</Link>
     <section className="card-offset mt-8 flex flex-wrap items-center justify-between gap-5 p-7">
-      <div><span className="flex h-16 w-16 items-center justify-center rounded-full bg-forest font-display text-xl font-bold uppercase text-cream">{(person.name ?? "?").slice(0, 2)}</span><h1 className="display-xl mt-4 text-4xl text-forest">{person.name}</h1><p className="text-sagedark">@{person.username}</p></div>
-      <div className="flex flex-wrap gap-2"><Link to={`/nachrichten?user=${person.id}`} className="btn-tang">Nachricht</Link><button className="btn-outline" onClick={() => block.mutate({ userId: person.id, blocked: !blocked })}>{blocked ? "Entsperren" : "Blockieren"}</button><button className="rounded-full border border-red-300 px-4 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-50" onClick={() => setReportOpen(true)}>Melden</button></div>
+      <div className="min-w-0"><span className="flex h-16 w-16 items-center justify-center rounded-full bg-forest font-display text-xl font-bold uppercase text-cream">{(person.name ?? "?").slice(0, 2)}</span><h1 className="display-xl mt-4 text-4xl text-forest">{person.name}</h1><p className="text-sagedark">@{person.username}</p><div className="mt-4 flex flex-wrap gap-2 text-sm text-sagedark">{person.age && <span>{person.age} Jahre</span>}{person.gender && <span>· {person.gender}</span>}{person.exchangeRole && <span>· {person.exchangeRole === "planung" ? "Plant sein Auslandsjahr" : person.exchangeRole === "im_ausland" ? "Gerade im Ausland" : "Alumni"}</span>}</div>{person.desiredCountry && <p className="mt-2 text-sm text-forest"><b>Wunschland:</b> {person.desiredCountry}</p>}{person.bio && <p className="mt-4 max-w-xl whitespace-pre-wrap text-sm leading-relaxed text-forest/85">{person.bio}</p>}</div>
+      <div className="flex flex-wrap gap-2">{user?.id === person.id ? <Link to="/konto" className="btn-tang">Profil bearbeiten</Link> : <Link to={`/nachrichten?user=${person.id}`} className="btn-tang">Anschreiben</Link>}<button className="btn-outline" onClick={() => block.mutate({ userId: person.id, blocked: !blocked })}>{blocked ? "Entsperren" : "Blockieren"}</button><button className="rounded-full border border-red-300 px-4 py-2 text-xs font-bold text-red-700 transition-colors hover:bg-red-50" onClick={() => setReportOpen(true)}>Melden</button></div>
     </section>
     {reportOpen && <section className="card-offset mt-5 p-5"><div className="flex items-start justify-between gap-4"><div><p className="label-caps text-tang">Sicher melden</p><h2 className="mt-1 font-display text-xl font-bold text-forest">Was ist passiert?</h2></div><button className="text-2xl leading-none text-sagedark" onClick={() => setReportOpen(false)} aria-label="Meldung schließen">×</button></div><select className="input-line mt-4" value={reason} onChange={(event) => setReason(event.target.value)}><option>Belästigung oder unerwünschte Inhalte</option><option>Beleidigung oder Hassrede</option><option>Spam oder Werbung</option><option>Gefälschter Account</option><option>Etwas anderes</option></select><textarea className="input-line mt-3 min-h-24 resize-y" placeholder="Optional: Erzähl uns kurz mehr …" value={details} onChange={(event) => setDetails(event.target.value)} /><div className="mt-4 flex justify-end gap-2"><button className="btn-outline" onClick={() => setReportOpen(false)}>Abbrechen</button><button className="btn-tang" disabled={report.isPending} onClick={() => report.mutate({ userId: person.id, reason, details: details || undefined })}>Meldung senden</button></div></section>}
     {reported && <p className="mt-4 rounded-lg bg-forest/10 p-3 text-sm text-forest">Danke, die Meldung wurde übermittelt.</p>}
