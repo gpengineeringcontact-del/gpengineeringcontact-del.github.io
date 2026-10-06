@@ -110,6 +110,13 @@ export const appRouter = createRouter({
       const db = getDb();
       const recipient = await db.query.users.findFirst({ where: and(eq(users.id, input.recipientId), eq(users.isActive, true)) });
       if (!recipient) throw new Error("Dieser Nutzer ist nicht verfügbar.");
+      const blocked = await db.query.userBlocks.findFirst({
+        where: or(
+          and(eq(userBlocks.blockerId, ctx.user.id), eq(userBlocks.blockedId, recipient.id)),
+          and(eq(userBlocks.blockerId, recipient.id), eq(userBlocks.blockedId, ctx.user.id)),
+        ),
+      });
+      if (blocked) throw new Error("Nachrichten an dieses Konto sind blockiert.");
       await db.insert(directMessages).values({ senderId: ctx.user.id, recipientId: recipient.id, subject: "Nachricht", body: input.body });
       await db.delete(typingStatuses).where(and(eq(typingStatuses.userId, ctx.user.id), eq(typingStatuses.recipientId, recipient.id)));
       return { ok: true };

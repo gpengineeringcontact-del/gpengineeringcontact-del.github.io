@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
+import { Link, useSearchParams } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -8,6 +8,7 @@ export default function Messages() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [text, setText] = useState("");
+  const [params] = useSearchParams();
   const conversations = trpc.contact.conversations.useQuery(undefined, { refetchInterval: 3000 });
   const search = trpc.contact.searchUsers.useQuery({ query }, { enabled: query.trim().length > 0 });
   const conversation = trpc.contact.conversation.useQuery({ userId: selectedId! }, { enabled: !!selectedId, refetchInterval: 3000 });
@@ -17,6 +18,11 @@ export default function Messages() {
   const markConversationRead = trpc.contact.markConversationRead.useMutation();
   const setTyping = trpc.contact.setTyping.useMutation();
   const typing = trpc.contact.isTyping.useQuery({ userId: selectedId! }, { enabled: !!selectedId, refetchInterval: 2000 });
+
+  useEffect(() => {
+    const requestedUser = Number(params.get("user"));
+    if (requestedUser > 0) setSelectedId(requestedUser);
+  }, [params]);
 
   useEffect(() => {
     if (!selectedId || !text) return;
