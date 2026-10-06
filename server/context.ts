@@ -1,6 +1,7 @@
 import type { FetchCreateContextFnOptions } from "@trpc/server/adapters/fetch";
 import type { User } from "../db/schema.js";
 import { authenticateRequest } from "./auth.js";
+import { ensureRuntimeSchema } from "./queries/connection.js";
 
 export type TrpcContext = {
   req: Request;
@@ -12,6 +13,7 @@ export async function createContext(
   opts: FetchCreateContextFnOptions,
 ): Promise<TrpcContext> {
   const ctx: TrpcContext = { req: opts.req, resHeaders: opts.resHeaders };
+  await ensureRuntimeSchema();
   try {
     ctx.user = await authenticateRequest(opts.req.headers);
   } catch {
