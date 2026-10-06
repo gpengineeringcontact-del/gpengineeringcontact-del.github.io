@@ -28,7 +28,7 @@ export const forumRouter = createRouter({
     const db = getDb();
     const rows = await db.query.posts.findMany({
       orderBy: [desc(posts.createdAt)],
-      with: { author: true, likes: true },
+      with: { author: true, likes: true, comments: { with: { author: true }, orderBy: [desc(contentComments.createdAt)], limit: 2 } },
       limit: 60,
     });
     return rows.map((p) => ({
@@ -43,6 +43,7 @@ export const forumRouter = createRouter({
       likedByMe: ctx.user ? p.likes.some((l) => l.userId === ctx.user!.id) : false,
       imageSrc: p.imageUrl ?? null,
       authorId: p.authorId,
+      comments: p.comments.map((comment) => ({ id: comment.id, body: comment.body, authorId: comment.authorId, authorName: comment.author?.name ?? "Community" })),
     }));
   }),
 
@@ -98,6 +99,11 @@ export const forumRouter = createRouter({
   addComment: memberQuery.input(z.object({ postId: z.number().int().positive().optional(), reportId: z.number().int().positive().optional(), body: z.string().min(2).max(2000) }).refine((input) => Boolean(input.postId) !== Boolean(input.reportId), "Genau ein Inhalt muss ausgewählt werden.")).mutation(async ({ ctx, input }) => {
     if (!input.postId && !input.reportId) throw new TRPCError({ code: "BAD_REQUEST", message: "Kein Inhalt ausgewählt." });
     await getDb().insert(contentComments).values({ authorId: ctx.user.id, postId: input.postId ?? null, reportId: input.reportId ?? null, body: input.body.trim() });
+    return { ok: true };
+  }),
+  updateComment: memberQuery.input(z.object({ commentId: z.number().int().positive(), body: z.string().min(2).max(2000) })).mutation(async ({ ctx, input }) => {
+    const result = await getDb().update(contentComments).set({ body: input.body.trim() }).where(and(eq(contentComments.id, input.commentId), eq(contentComments.authorId, ctx.user.id))).returning({ id: contentComments.id });
+    if (!result.length) throw new TRPCError({ code: "FORBIDDEN", message: "Du kannst nur eigene Kommentare bearbeiten." });
     return { ok: true };
   }),
 

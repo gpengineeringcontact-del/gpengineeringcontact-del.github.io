@@ -21,6 +21,7 @@ export const usersRelations = relations(users, ({ many }) => ({
 export const postsRelations = relations(posts, ({ one, many }) => ({
   author: one(users, { fields: [posts.authorId], references: [users.id] }),
   likes: many(postLikes),
+  comments: many(contentComments),
   licenseRequests: many(licenseRequests),
 }));
 
