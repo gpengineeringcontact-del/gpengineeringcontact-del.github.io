@@ -10,6 +10,7 @@ export default function Login() {
   const [name, setName] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [plan, setPlan] = useState<"free" | "premium">("free");
   const [error, setError] = useState("");
@@ -27,7 +28,7 @@ export default function Login() {
     event.preventDefault();
     setError("");
     const normalizedEmail = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+    if (mode === "register" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
       setError("Bitte gib eine gültige E-Mail-Adresse ein.");
       return;
     }
@@ -36,7 +37,7 @@ export default function Login() {
       return;
     }
     const onError = (err: { message: string }) => setError(err.message);
-    if (mode === "login") login.mutate({ email: normalizedEmail, password }, { onError });
+    if (mode === "login") login.mutate({ identifier: identifier.trim().toLowerCase(), password }, { onError });
     else register.mutate({ name: name.trim(), username: username.trim(), email: normalizedEmail, password, plan }, { onError });
   };
 
@@ -90,7 +91,7 @@ export default function Login() {
                 </button>
               </div>
             )}
-            <input className="input-line" type="email" placeholder="E-Mail-Adresse" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            {mode === "login" ? <input className="input-line" type="text" placeholder="E-Mail-Adresse oder Benutzername" value={identifier} onChange={(e) => setIdentifier(e.target.value)} required /> : <input className="input-line" type="email" placeholder="E-Mail-Adresse" value={email} onChange={(e) => setEmail(e.target.value)} required />}
             <input className="input-line" type="password" placeholder="Passwort (mindestens 8 Zeichen)" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={mode === "register" ? 8 : 1} />
             {error && <p className="text-sm text-red-700">{error}</p>}
             <button className="btn-tang mt-3 w-full" disabled={pending}>{pending ? "Einen Moment …" : mode === "login" ? "Anmelden" : "Konto erstellen"}</button>

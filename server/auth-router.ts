@@ -105,16 +105,20 @@ export const authRouter = createRouter({
     return { success: true };
   }),
   login: publicQuery.input(z.object({
-    email: z.string().email().max(320),
+    identifier: z.string().min(3).max(320),
     password: z.string().min(1).max(128),
   })).mutation(async ({ input, ctx }) => {
     const db = getDb();
-    const user = await db.query.users.findFirst({ where: eq(users.email, input.email.toLowerCase()) });
+    const identifier = input.identifier.trim().toLowerCase();
+    const user = identifier.includes("@")
+      ? await db.query.users.findFirst({ where: eq(users.email, identifier) })
+      : await db.query.users.findFirst({ where: eq(users.username, identifier) });
     if (!user?.passwordHash || !(await verifyPassword(input.password, user.passwordHash))) {
-      throw new Error("E-Mail oder Passwort stimmt nicht.");
+      throw new Error("Benutzername/E-Mail oder Passwort stimmt nicht.");
     }
     await db.update(users).set({ lastSignInAt: new Date() }).where(eq(users.id, user.id));
-    await setSession(ctx, input.email.toLowerCase());
+    if (!user.email) throw new Error("Für dieses Konto ist keine E-Mail-Adresse hinterlegt.");
+    await setSession(ctx, user.email);
     return { success: true };
   }),
   me: authedQuery.query((opts) => opts.ctx.user),
