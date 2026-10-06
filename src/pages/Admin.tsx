@@ -9,6 +9,7 @@ export default function Admin() {
   const { user, isLoading } = useAuth({ redirectOnUnauthenticated: true });
   const [section, setSection] = useState<Section>("users");
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [userSearch, setUserSearch] = useState("");
   const [messageUserId, setMessageUserId] = useState<number | null>(null);
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
@@ -22,6 +23,11 @@ export default function Admin() {
   const deletePost = trpc.forum.deletePost.useMutation({ onSuccess: refresh });
   const deleteThread = trpc.forum.deleteThread.useMutation({ onSuccess: refresh });
   const sendMessage = trpc.forum.messageUser.useMutation({ onSuccess: () => { setMessageUserId(null); setSubject(""); setMessage(""); } });
+  const filteredUsers = users.data?.filter((item) => {
+    const query = userSearch.trim().toLowerCase();
+    if (!query) return true;
+    return `${item.name ?? ""} ${item.email ?? ""}`.toLowerCase().includes(query);
+  });
 
   if (isLoading) return <main className="min-h-screen bg-cream p-8" />;
   if (!user || user.role !== "admin") return <main className="min-h-screen bg-cream px-5 py-20"><div className="mx-auto max-w-xl card-offset p-8">
@@ -43,10 +49,20 @@ export default function Admin() {
       {section === "users" && <section className="mt-6 grid gap-5 lg:grid-cols-[1fr_1.2fr]">
         <div className="space-y-3">
           <h2 className="text-xl font-bold text-forest">Alle Konten ({users.data?.length ?? 0})</h2>
-          {users.data?.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} className={`block w-full rounded-xl border p-4 text-left ${selectedId === item.id ? "border-tang bg-tang/10" : "border-forest/15 bg-paper"}`}>
+          <input
+            className="input-line"
+            type="search"
+            value={userSearch}
+            onChange={(event) => setUserSearch(event.target.value)}
+            placeholder="Nach Name oder E-Mail suchen …"
+            aria-label="Konten nach Name oder E-Mail suchen"
+          />
+          <p className="text-xs text-sagedark">{filteredUsers?.length ?? 0} von {users.data?.length ?? 0} Konten</p>
+          {filteredUsers?.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} className={`block w-full rounded-xl border p-4 text-left ${selectedId === item.id ? "border-tang bg-tang/10" : "border-forest/15 bg-paper"}`}>
             <span className="flex items-center justify-between gap-3"><strong>{item.name ?? "Ohne Namen"}</strong><span className="text-xs">{item.role === "admin" ? "Admin" : item.membershipStatus === "active" ? "Premium" : "Free"}</span></span>
             <span className="mt-1 block text-xs text-sagedark">{item.email ?? "keine E-Mail"} · {item.isActive ? "aktiv" : "deaktiviert"}</span>
           </button>)}
+          {filteredUsers?.length === 0 && <p className="rounded-lg bg-forest/10 p-4 text-sm text-sagedark">Kein Konto gefunden.</p>}
         </div>
         <UserEditor
           key={selectedId ?? "empty"}
