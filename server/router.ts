@@ -32,6 +32,36 @@ export const appRouter = createRouter({
         limit: 100,
       });
     }),
+    conversations: authedQuery.query(async ({ ctx }) => {
+      const rows = await getDb().query.directMessages.findMany({
+        where: or(eq(directMessages.senderId, ctx.user.id), eq(directMessages.recipientId, ctx.user.id)),
+        orderBy: [desc(directMessages.createdAt)],
+        with: { sender: true, recipient: true },
+        limit: 500,
+      });
+      const grouped = new Map<number, {
+        user: { id: number; name: string | null; username: string | null; avatar: string | null };
+        lastMessage: string;
+        lastMessageAt: Date;
+        unreadCount: number;
+      }>();
+      for (const row of rows) {
+        const other = row.senderId === ctx.user.id ? row.recipient : row.sender;
+        if (!other || grouped.has(other.id)) continue;
+        grouped.set(other.id, {
+          user: { id: other.id, name: other.name, username: other.username, avatar: other.avatar },
+          lastMessage: row.body,
+          lastMessageAt: row.createdAt,
+          unreadCount: 0,
+        });
+      }
+      for (const row of rows) {
+        const other = row.senderId === ctx.user.id ? row.recipient : row.sender;
+        const item = other ? grouped.get(other.id) : undefined;
+        if (item && row.recipientId === ctx.user.id && !row.readAt) item.unreadCount += 1;
+      }
+      return Array.from(grouped.values());
+    }),
     unreadCount: authedQuery.query(async ({ ctx }) => {
       const rows = await getDb().query.directMessages.findMany({
         where: and(eq(directMessages.recipientId, ctx.user.id), isNull(directMessages.readAt)),

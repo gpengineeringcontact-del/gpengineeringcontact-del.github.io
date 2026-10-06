@@ -8,10 +8,12 @@ export default function Messages() {
   const [query, setQuery] = useState("");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [text, setText] = useState("");
+  const conversations = trpc.contact.conversations.useQuery(undefined, { refetchInterval: 3000 });
   const search = trpc.contact.searchUsers.useQuery({ query }, { enabled: query.trim().length > 0 });
   const conversation = trpc.contact.conversation.useQuery({ userId: selectedId! }, { enabled: !!selectedId, refetchInterval: 3000 });
-  const selected = search.data?.find((item) => item.id === selectedId);
-  const send = trpc.contact.sendDirect.useMutation({ onSuccess: async () => { setText(""); await conversation.refetch(); } });
+  const selected = conversations.data?.find((item) => item.user.id === selectedId)?.user
+    ?? search.data?.find((item) => item.id === selectedId);
+  const send = trpc.contact.sendDirect.useMutation({ onSuccess: async () => { setText(""); await Promise.all([conversation.refetch(), conversations.refetch()]); } });
   const markConversationRead = trpc.contact.markConversationRead.useMutation();
   const setTyping = trpc.contact.setTyping.useMutation();
   const typing = trpc.contact.isTyping.useQuery({ userId: selectedId! }, { enabled: !!selectedId, refetchInterval: 2000 });
@@ -23,7 +25,7 @@ export default function Messages() {
   }, [text, selectedId]);
 
   useEffect(() => {
-    if (selectedId) markConversationRead.mutate({ userId: selectedId });
+    if (selectedId) markConversationRead.mutate({ userId: selectedId }, { onSuccess: () => conversations.refetch() });
   }, [selectedId]);
 
   if (isLoading || !user) return <main className="min-h-screen bg-cream p-8" />;
@@ -34,7 +36,15 @@ export default function Messages() {
     <div className="mt-8 grid gap-5 lg:grid-cols-[280px_1fr]">
       <aside className="card-offset p-4">
         <input className="input-line" placeholder="@Benutzername suchen …" value={query} onChange={(event) => setQuery(event.target.value)} />
-        <div className="mt-4 space-y-2">{search.data?.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full rounded-xl p-3 text-left ${selectedId === item.id ? "bg-tang/20" : "bg-paper"}`}><b>{item.name}</b><span className="block text-xs text-sagedark">@{item.username}</span></button>)}</div>
+        <div className="mt-4 space-y-2">
+          {conversations.data?.map((item) => <button key={item.user.id} onClick={() => setSelectedId(item.user.id)} className={`w-full rounded-xl p-3 text-left ${selectedId === item.user.id ? "bg-tang/20" : "bg-paper"}`}>
+            <span className="flex items-center justify-between gap-2"><b>{item.user.name}</b>{item.unreadCount > 0 && <span className="inline-flex min-w-5 justify-center rounded-full bg-tang px-1.5 text-[10px] font-bold text-forest">{item.unreadCount}</span>}</span>
+            <span className="block text-xs text-sagedark">@{item.user.username}</span>
+            <span className="mt-1 block truncate text-xs text-sagedark">{item.lastMessage}</span>
+          </button>)}
+          {search.data?.filter((item) => !conversations.data?.some((conversation) => conversation.user.id === item.id)).map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} className={`w-full rounded-xl p-3 text-left ${selectedId === item.id ? "bg-tang/20" : "bg-paper"}`}><b>{item.name}</b><span className="block text-xs text-sagedark">@{item.username}</span></button>)}
+          {!conversations.data?.length && !search.data?.length && <p className="rounded-lg bg-forest/10 p-3 text-sm text-sagedark">Noch keine Chats. Suche oben nach einem Benutzernamen.</p>}
+        </div>
       </aside>
       <section className="card-offset flex min-h-[500px] flex-col p-5">
         {!selected ? <div className="m-auto text-center text-sagedark"><p className="text-lg font-semibold text-forest">Wähle einen Chat</p><p className="mt-2 text-sm">Suche nach einem Benutzernamen, um eine Nachricht zu schreiben.</p></div> : <>
