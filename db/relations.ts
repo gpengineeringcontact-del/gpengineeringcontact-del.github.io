@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports } from "./schema.js";
+import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports, contactMessages, directMessages } from "./schema.js";
 
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
@@ -8,6 +8,9 @@ export const usersRelations = relations(users, ({ many }) => ({
   replies: many(threadReplies),
   passwordResetTokens: many(passwordResetTokens),
   reports: many(reports),
+  contactMessages: many(contactMessages),
+  sentMessages: many(directMessages, { relationName: "sentMessages" }),
+  receivedMessages: many(directMessages, { relationName: "receivedMessages" }),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -43,4 +46,15 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   reporter: one(users, { fields: [reports.reporterId], references: [users.id] }),
   post: one(posts, { fields: [reports.postId], references: [posts.id] }),
   thread: one(threads, { fields: [reports.threadId], references: [threads.id] }),
+}));
+
+export const contactMessagesRelations = relations(contactMessages, ({ one, many }) => ({
+  user: one(users, { fields: [contactMessages.userId], references: [users.id] }),
+  replies: many(directMessages),
+}));
+
+export const directMessagesRelations = relations(directMessages, ({ one }) => ({
+  sender: one(users, { fields: [directMessages.senderId], references: [users.id], relationName: "sentMessages" }),
+  recipient: one(users, { fields: [directMessages.recipientId], references: [users.id], relationName: "receivedMessages" }),
+  contactMessage: one(contactMessages, { fields: [directMessages.contactMessageId], references: [contactMessages.id] }),
 }));

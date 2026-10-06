@@ -330,6 +330,13 @@ export const forumRouter = createRouter({
     return { contacts, licenses };
   }),
 
+  updateLicenseStatus: adminQuery
+    .input(z.object({ requestId: z.number().int().positive(), status: z.enum(["zugestimmt", "abgelehnt"]) }))
+    .mutation(async ({ input }) => {
+      await getDb().update(licenseRequests).set({ status: input.status }).where(eq(licenseRequests.id, input.requestId));
+      return { ok: true };
+    }),
+
   messageUser: adminQuery
     .input(z.object({
       userId: z.number().int().positive(),

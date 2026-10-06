@@ -8,6 +8,7 @@ import { Imprint, Privacy } from './pages/Legal'
 import { ForgotPassword, ResetPassword } from './pages/PasswordReset'
 import Account from './pages/Account'
 import Admin from './pages/Admin'
+import Messages from './pages/Messages'
 
 export default function App() {
   return (
@@ -18,6 +19,7 @@ export default function App() {
       <Route path="/passwort-reset" element={<ResetPassword />} />
       <Route path="/konto" element={<Account />} />
       <Route path="/admin" element={<Admin />} />
+      <Route path="/nachrichten" element={<Messages />} />
       <Route path="/ueber-uns" element={<About />} />
       <Route path="/kontakt" element={<Contact />} />
       <Route path="/impressum" element={<Imprint />} />

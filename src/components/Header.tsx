@@ -48,6 +48,9 @@ export function Header({ onOpenUpload }: { onOpenUpload: () => void }) {
                   <Link to="/konto" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
                     Konto
                   </Link>
+                  <Link to="/nachrichten" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
+                    Nachrichten
+                  </Link>
                   {user.role === "admin" && <Link to="/admin" className="ml-1 shrink-0 text-[11px] font-semibold text-sagedark transition-colors hover:text-tang">
                     Admin
                   </Link>}

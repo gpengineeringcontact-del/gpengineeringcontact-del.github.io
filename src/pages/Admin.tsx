@@ -23,6 +23,10 @@ export default function Admin() {
   const deletePost = trpc.forum.deletePost.useMutation({ onSuccess: refresh });
   const deleteThread = trpc.forum.deleteThread.useMutation({ onSuccess: refresh });
   const sendMessage = trpc.forum.messageUser.useMutation({ onSuccess: () => { setMessageUserId(null); setSubject(""); setMessage(""); } });
+  const replyContact = trpc.contact.adminReply.useMutation({ onSuccess: async () => { setReplyContactId(null); setSubject(""); setMessage(""); await inbox.refetch(); } });
+  const deleteContact = trpc.contact.delete.useMutation({ onSuccess: () => inbox.refetch() });
+  const updateLicense = trpc.forum.updateLicenseStatus.useMutation({ onSuccess: () => inbox.refetch() });
+  const [replyContactId, setReplyContactId] = useState<number | null>(null);
   const filteredUsers = users.data?.filter((item) => {
     const query = userSearch.trim().toLowerCase();
     if (!query) return true;
@@ -92,8 +96,8 @@ export default function Admin() {
       </section>}
 
       {section === "inbox" && <section className="mt-6 grid gap-5 lg:grid-cols-2">
-        <div><h2 className="text-xl font-bold text-forest">Kontaktanfragen</h2>{inbox.data?.contacts.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><b>{item.name}</b><p className="text-xs text-sagedark">{item.email}</p><p className="mt-3 text-sm">{item.message}</p></article>)}</div>
-        <div><h2 className="text-xl font-bold text-forest">Lizenzanfragen</h2>{inbox.data?.licenses.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><b>{item.company}</b><p className="text-xs text-sagedark">{item.email}</p><p className="mt-3 text-sm">{item.message ?? "Keine Nachricht"}</p></article>)}</div>
+        <div><h2 className="text-xl font-bold text-forest">Kontaktanfragen</h2>{inbox.data?.contacts.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><button className="w-full text-left" onClick={() => setReplyContactId(item.id)}><b>{item.name}</b><p className="text-xs text-sagedark">{item.email ?? "Konto-Nachricht"} · {item.status}</p><p className="mt-3 line-clamp-2 text-sm">{item.message}</p><span className="mt-3 inline-block text-xs font-bold text-forest underline">Öffnen und verwalten</span></button><button className="mt-4 text-xs font-bold text-red-700 underline" onClick={() => { if (window.confirm("Kontaktanfrage löschen?")) deleteContact.mutate({ contactId: item.id }); }}>Löschen</button></article>)}</div>
+        <div><h2 className="text-xl font-bold text-forest">Lizenzanfragen</h2>{inbox.data?.licenses.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><b>{item.company}</b><p className="text-xs text-sagedark">{item.email} · {item.status}</p><p className="mt-3 text-sm">{item.message ?? "Keine Nachricht"}</p><div className="mt-4 flex gap-2"><button className="btn-outline !py-2" onClick={() => updateLicense.mutate({ requestId: item.id, status: "zugestimmt" })}>Zustimmen</button><button className="rounded-full border border-red-300 px-4 py-2 text-xs font-bold text-red-700" onClick={() => updateLicense.mutate({ requestId: item.id, status: "abgelehnt" })}>Ablehnen</button></div></article>)}</div>
       </section>}
 
       {messageUserId && <div className="fixed inset-0 z-50 grid place-items-center bg-forest/40 p-5"><form className="card-offset w-full max-w-lg bg-cream p-7" onSubmit={(event) => { event.preventDefault(); sendMessage.mutate({ userId: messageUserId, subject, message }); }}>
@@ -102,6 +106,15 @@ export default function Admin() {
         <textarea className="input-line mt-4 min-h-32" placeholder="Nachricht" value={message} onChange={(event) => setMessage(event.target.value)} required />
         <div className="mt-5 flex gap-3"><button type="button" className="btn-outline" onClick={() => setMessageUserId(null)}>Abbrechen</button><button className="btn-tang" disabled={sendMessage.isPending}>Senden</button></div>
       </form></div>}
+      {replyContactId && <div className="fixed inset-0 z-50 grid place-items-center bg-forest/40 p-5"><div className="card-offset w-full max-w-2xl bg-cream p-7">
+        <h2 className="text-2xl font-bold text-forest">Kontaktanfrage beantworten</h2>
+        <p className="mt-4 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg bg-paper p-4 text-sm text-sagedark">{inbox.data?.contacts.find((item) => item.id === replyContactId)?.message}</p>
+        <form onSubmit={(event) => { event.preventDefault(); replyContact.mutate({ contactId: replyContactId, subject: subject || "Antwort von Wyfare", message }); }}>
+          <input className="input-line mt-4" placeholder="Betreff" value={subject} onChange={(event) => setSubject(event.target.value)} required />
+          <textarea className="input-line mt-4 min-h-32" placeholder="Antwort" value={message} onChange={(event) => setMessage(event.target.value)} required />
+          <div className="mt-5 flex gap-3"><button type="button" className="btn-outline" onClick={() => setReplyContactId(null)}>Schließen</button><button className="btn-tang" disabled={replyContact.isPending}>Antwort senden</button></div>
+        </form>
+      </div></div>}
     </div>
   </main>;
 }

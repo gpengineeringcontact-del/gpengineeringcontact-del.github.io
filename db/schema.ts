@@ -124,13 +124,26 @@ export type LicenseRequest = typeof licenseRequests.$inferSelect;
 
 export const contactMessages = pgTable("contact_messages", {
   id: serial("id").primaryKey(),
+  userId: integer("userId").references(() => users.id),
   name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
+  email: varchar("email", { length: 320 }),
   message: text("message").notNull(),
+  status: varchar("status", { length: 20 }).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
 export type ContactMessage = typeof contactMessages.$inferSelect;
+
+export const directMessages = pgTable("direct_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("senderId").references(() => users.id),
+  recipientId: integer("recipientId").notNull().references(() => users.id),
+  contactMessageId: integer("contactMessageId").references(() => contactMessages.id),
+  subject: varchar("subject", { length: 160 }).notNull(),
+  body: text("body").notNull(),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),
