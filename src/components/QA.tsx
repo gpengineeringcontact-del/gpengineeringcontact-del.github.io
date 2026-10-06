@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router";
@@ -7,7 +7,7 @@ import { oliAgent } from "@/lib/oliAgent";
 
 type ChatMsg = { from: "user" | "bot"; text: string; escalation?: boolean };
 
-export function QA({ onUpgrade }: { onUpgrade: () => void }) {
+export function QA({ onUpgrade, initialThreadId }: { onUpgrade: () => void; initialThreadId?: number | null }) {
   const { isAuthenticated, isMember } = useAuth();
   const navigate = useNavigate();
   const utils = trpc.useUtils();
@@ -37,6 +37,10 @@ export function QA({ onUpgrade }: { onUpgrade: () => void }) {
     { threadId: openThreadId ?? 0 },
     { enabled: openThreadId !== null && openThreadId > 0 },
   );
+
+  useEffect(() => {
+    if (initialThreadId && initialThreadId > 0) setOpenThreadId(initialThreadId);
+  }, [initialThreadId]);
 
   const createThread = trpc.forum.createThread.useMutation({
     onSuccess: () => {

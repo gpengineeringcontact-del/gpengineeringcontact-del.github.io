@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { trpc } from "@/providers/trpc";
 import { useNavigate } from "react-router";
 import { useAuth } from "@/hooks/useAuth";
 import { Header } from "@/components/Header";
@@ -21,9 +22,11 @@ export default function Home() {
   const [upgradeOpen, setUpgradeOpen] = useState(false);
   const [licensePost, setLicensePost] = useState<FeedPost | null>(null);
   const [roleDismissed, setRoleDismissed] = useState(false);
+  const [openThreadId, setOpenThreadId] = useState<number | null>(null);
 
   const { user, isAuthenticated, isMember, isLoading } = useAuth();
   const navigate = useNavigate();
+  const communityQuestions = trpc.forum.listThreads.useQuery(undefined, { staleTime: 15000 });
 
   const openUpload = () => {
     if (!isAuthenticated) {
@@ -76,9 +79,24 @@ export default function Home() {
               für Mitglieder mit einmaligem Wyfare Zugang.
             </p>
           </div>
-          <span className="label-caps rounded-full border border-forest/15 px-3 py-2 text-forest">
-            Forum · Phase 1
-          </span>
+          <span className="label-caps rounded-full border border-forest/15 px-3 py-2 text-forest">Forum · Phase 1</span>
+        </section>
+        <section className="mb-10 grid gap-5 lg:grid-cols-[1fr_1.4fr]">
+          <div>
+            <p className="label-caps text-tang">Gerade in der Community</p>
+            <h2 className="display-xl mt-2 text-3xl text-forest">Offene Fragen</h2>
+            <p className="mt-3 max-w-md text-sm leading-relaxed text-sagedark">Echte Fragen aus dem Forum – lies mit, teile deine Erfahrung und hilf jemandem beim Ankommen.</p>
+            <button className="btn-outline mt-5" onClick={() => setTab("qa")}>Alle Fragen ansehen</button>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {communityQuestions.data?.slice(0, 4).map((thread) => (
+              <button key={thread.id} className="card-offset-sm p-4 text-left transition-transform hover:-translate-y-1" onClick={() => { setOpenThreadId(thread.id); setTab("qa"); }}>
+                <p className="font-display text-base font-bold leading-snug text-forest">{thread.title}</p>
+                <p className="mt-3 text-xs text-sagedark">{thread.replyCount} {thread.replyCount === 1 ? "Antwort" : "Antworten"} · von {thread.authorName}</p>
+              </button>
+            ))}
+            {!communityQuestions.isLoading && !communityQuestions.data?.length && <div className="card-offset-sm p-5 text-sm text-sagedark sm:col-span-2">Noch keine offenen Fragen. Stell die erste Frage im Q&A.</div>}
+          </div>
         </section>
 
         {tab === "feed" && (
@@ -90,7 +108,7 @@ export default function Home() {
           </div>
         )}
         {tab === "berichte" && <Journals onUpgrade={() => setUpgradeOpen(true)} />}
-        {tab === "qa" && <QA onUpgrade={() => setUpgradeOpen(true)} />}
+        {tab === "qa" && <QA initialThreadId={openThreadId} onUpgrade={() => setUpgradeOpen(true)} />}
       </main>
 
       <Footer />
