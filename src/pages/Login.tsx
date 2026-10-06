@@ -25,9 +25,18 @@ export default function Login() {
   const submit = (event: React.FormEvent) => {
     event.preventDefault();
     setError("");
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError("Bitte gib eine gültige E-Mail-Adresse ein.");
+      return;
+    }
+    if (mode === "register" && password.length < 8) {
+      setError("Das Passwort muss mindestens 8 Zeichen lang sein.");
+      return;
+    }
     const onError = (err: { message: string }) => setError(err.message);
-    if (mode === "login") login.mutate({ email, password }, { onError });
-    else register.mutate({ name, email, password, plan }, { onError });
+    if (mode === "login") login.mutate({ email: normalizedEmail, password }, { onError });
+    else register.mutate({ name: name.trim(), email: normalizedEmail, password, plan }, { onError });
   };
 
   return (
@@ -65,7 +74,7 @@ export default function Login() {
             </button>
           </div>
           <div className="my-6 flex items-center gap-3 text-[11px] text-sagedark"><span className="h-px flex-1 bg-forest/15" />oder mit E-Mail<span className="h-px flex-1 bg-forest/15" /></div>
-          <form onSubmit={submit} className="space-y-3">
+          <form onSubmit={submit} noValidate className="space-y-3">
             {mode === "register" && <input className="input-line" placeholder="Dein Name" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />}
             {mode === "register" && (
               <div className="grid gap-2 sm:grid-cols-2">
