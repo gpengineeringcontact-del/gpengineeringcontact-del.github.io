@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import { useAuth } from "@/hooks/useAuth";
 
-type Section = "users" | "reports" | "inbox";
+type Section = "users" | "reports" | "licenses";
 
 export default function Admin() {
   const { user, isLoading } = useAuth({ redirectOnUnauthenticated: true });
@@ -23,14 +23,11 @@ export default function Admin() {
   const deletePost = trpc.forum.deletePost.useMutation({ onSuccess: refresh });
   const deleteThread = trpc.forum.deleteThread.useMutation({ onSuccess: refresh });
   const sendMessage = trpc.forum.messageUser.useMutation({ onSuccess: () => { setMessageUserId(null); setSubject(""); setMessage(""); } });
-  const replyContact = trpc.contact.adminReply.useMutation({ onSuccess: async () => { setReplyContactId(null); setSubject(""); setMessage(""); await inbox.refetch(); } });
-  const deleteContact = trpc.contact.delete.useMutation({ onSuccess: () => inbox.refetch() });
   const updateLicense = trpc.forum.updateLicenseStatus.useMutation({ onSuccess: () => inbox.refetch() });
-  const [replyContactId, setReplyContactId] = useState<number | null>(null);
   const filteredUsers = users.data?.filter((item) => {
     const query = userSearch.trim().toLowerCase();
     if (!query) return true;
-    return `${item.name ?? ""} ${item.email ?? ""}`.toLowerCase().includes(query);
+    return `${item.name ?? ""} ${item.username ?? ""} ${item.email ?? ""}`.toLowerCase().includes(query);
   });
 
   if (isLoading) return <main className="min-h-screen bg-cream p-8" />;
@@ -46,7 +43,7 @@ export default function Admin() {
       <h1 className="display-xl mt-10 text-5xl text-forest">Admin-Zentrale</h1>
       <p className="mt-3 text-sagedark">Konten, Zugänge, Inhalte, Meldungen und Anfragen verwalten.</p>
       <nav className="mt-8 flex flex-wrap gap-2 border-b border-forest/15 pb-3">
-        {([["users", "Konten"], ["reports", "Meldungen"], ["inbox", "Posteingang"]] as const).map(([id, label]) =>
+        {([["users", "Konten"], ["reports", "Meldungen"], ["licenses", "Lizenzanfragen"]] as const).map(([id, label]) =>
           <button key={id} onClick={() => setSection(id)} className={`rounded-full px-4 py-2 text-sm font-bold ${section === id ? "bg-forest text-cream" : "bg-paper text-forest"}`}>{label}</button>)}
       </nav>
 
@@ -58,13 +55,13 @@ export default function Admin() {
             type="search"
             value={userSearch}
             onChange={(event) => setUserSearch(event.target.value)}
-            placeholder="Nach Name oder E-Mail suchen …"
+            placeholder="Nach Benutzername, Name oder E-Mail suchen …"
             aria-label="Konten nach Name oder E-Mail suchen"
           />
           <p className="text-xs text-sagedark">{filteredUsers?.length ?? 0} von {users.data?.length ?? 0} Konten</p>
           {filteredUsers?.map((item) => <button key={item.id} onClick={() => setSelectedId(item.id)} className={`block w-full rounded-xl border p-4 text-left ${selectedId === item.id ? "border-tang bg-tang/10" : "border-forest/15 bg-paper"}`}>
             <span className="flex items-center justify-between gap-3"><strong>{item.name ?? "Ohne Namen"}</strong><span className="text-xs">{item.role === "admin" ? "Admin" : item.membershipStatus === "active" ? "Premium" : "Free"}</span></span>
-            <span className="mt-1 block text-xs text-sagedark">{item.email ?? "keine E-Mail"} · {item.isActive ? "aktiv" : "deaktiviert"}</span>
+            <span className="mt-1 block text-xs text-sagedark">@{item.username ?? "kein Benutzername"} · {item.email ?? "keine E-Mail"} · {item.isActive ? "aktiv" : "deaktiviert"}</span>
           </button>)}
           {filteredUsers?.length === 0 && <p className="rounded-lg bg-forest/10 p-4 text-sm text-sagedark">Kein Konto gefunden.</p>}
         </div>
@@ -95,38 +92,27 @@ export default function Admin() {
         {reports.data?.length === 0 && <p className="rounded-lg bg-forest/10 p-4 text-forest">Keine offenen Meldungen.</p>}
       </section>}
 
-      {section === "inbox" && <section className="mt-6 grid gap-5 lg:grid-cols-2">
-        <div><h2 className="text-xl font-bold text-forest">Kontaktanfragen</h2>{inbox.data?.contacts.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><button className="w-full text-left" onClick={() => setReplyContactId(item.id)}><b>{item.name}</b><p className="text-xs text-sagedark">{item.email ?? "Konto-Nachricht"} · {item.status}</p><p className="mt-3 line-clamp-2 text-sm">{item.message}</p><span className="mt-3 inline-block text-xs font-bold text-forest underline">Öffnen und verwalten</span></button><button className="mt-4 text-xs font-bold text-red-700 underline" onClick={() => { if (window.confirm("Kontaktanfrage löschen?")) deleteContact.mutate({ contactId: item.id }); }}>Löschen</button></article>)}</div>
-        <div><h2 className="text-xl font-bold text-forest">Lizenzanfragen</h2>{inbox.data?.licenses.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><b>{item.company}</b><p className="text-xs text-sagedark">{item.email} · {item.status}</p><p className="mt-3 text-sm">{item.message ?? "Keine Nachricht"}</p><div className="mt-4 flex gap-2"><button className="btn-outline !py-2" onClick={() => updateLicense.mutate({ requestId: item.id, status: "zugestimmt" })}>Zustimmen</button><button className="rounded-full border border-red-300 px-4 py-2 text-xs font-bold text-red-700" onClick={() => updateLicense.mutate({ requestId: item.id, status: "abgelehnt" })}>Ablehnen</button></div></article>)}</div>
-      </section>}
-
+      {section === "licenses" && <section className="mt-6">
+        <h2 className="text-xl font-bold text-forest">Lizenzanfragen</h2>{inbox.data?.licenses.map((item) => <article key={item.id} className="card-offset mt-3 p-5"><b>{item.company}</b><p className="text-xs text-sagedark">{item.email} · {item.status}</p><p className="mt-3 text-sm">{item.message ?? "Keine Nachricht"}</p><div className="mt-4 flex gap-2"><button className="btn-outline !py-2" onClick={() => updateLicense.mutate({ requestId: item.id, status: "zugestimmt" })}>Zustimmen</button><button className="rounded-full border border-red-300 px-4 py-2 text-xs font-bold text-red-700" onClick={() => updateLicense.mutate({ requestId: item.id, status: "abgelehnt" })}>Ablehnen</button></div></article>)}</section>}
       {messageUserId && <div className="fixed inset-0 z-50 grid place-items-center bg-forest/40 p-5"><form className="card-offset w-full max-w-lg bg-cream p-7" onSubmit={(event) => { event.preventDefault(); sendMessage.mutate({ userId: messageUserId, subject, message }); }}>
         <h2 className="text-2xl font-bold text-forest">Nutzer anschreiben</h2>
         <input className="input-line mt-5" placeholder="Betreff" value={subject} onChange={(event) => setSubject(event.target.value)} required />
         <textarea className="input-line mt-4 min-h-32" placeholder="Nachricht" value={message} onChange={(event) => setMessage(event.target.value)} required />
         <div className="mt-5 flex gap-3"><button type="button" className="btn-outline" onClick={() => setMessageUserId(null)}>Abbrechen</button><button className="btn-tang" disabled={sendMessage.isPending}>Senden</button></div>
       </form></div>}
-      {replyContactId && <div className="fixed inset-0 z-50 grid place-items-center bg-forest/40 p-5"><div className="card-offset w-full max-w-2xl bg-cream p-7">
-        <h2 className="text-2xl font-bold text-forest">Kontaktanfrage beantworten</h2>
-        <p className="mt-4 max-h-48 overflow-y-auto whitespace-pre-wrap rounded-lg bg-paper p-4 text-sm text-sagedark">{inbox.data?.contacts.find((item) => item.id === replyContactId)?.message}</p>
-        <form onSubmit={(event) => { event.preventDefault(); replyContact.mutate({ contactId: replyContactId, subject: subject || "Antwort von Wyfare", message }); }}>
-          <input className="input-line mt-4" placeholder="Betreff" value={subject} onChange={(event) => setSubject(event.target.value)} required />
-          <textarea className="input-line mt-4 min-h-32" placeholder="Antwort" value={message} onChange={(event) => setMessage(event.target.value)} required />
-          <div className="mt-5 flex gap-3"><button type="button" className="btn-outline" onClick={() => setReplyContactId(null)}>Schließen</button><button className="btn-tang" disabled={replyContact.isPending}>Antwort senden</button></div>
-        </form>
-      </div></div>}
     </div>
   </main>;
 }
 
 function UserEditor({ user, onSave, onDelete, onMessage, saving }: {
-  user?: { id: number; name: string | null; role: string; membershipStatus: string; isActive: boolean; exchangeRole: string | null; email: string | null };
-  onSave: (input: { userId: number; name: string; role: "user" | "admin"; membershipStatus: "free" | "active"; isActive: boolean; exchangeRole: "planung" | "im_ausland" | "alumni" | null }) => void;
+  user?: { id: number; name: string | null; username: string | null; role: string; membershipStatus: string; isActive: boolean; exchangeRole: string | null; email: string | null };
+  onSave: (input: { userId: number; name: string; username: string; role: "user" | "admin"; membershipStatus: "free" | "active"; isActive: boolean; exchangeRole: "planung" | "im_ausland" | "alumni" | null }) => void;
   onDelete: (id: number) => void;
   onMessage: (id: number) => void;
   saving: boolean;
 }) {
   const [name, setName] = useState(user?.name ?? "");
+  const [username, setUsername] = useState(user?.username ?? "");
   const [role, setRole] = useState<"user" | "admin">((user?.role as "user" | "admin") ?? "user");
   const [membershipStatus, setMembershipStatus] = useState<"free" | "active">((user?.membershipStatus as "free" | "active") ?? "free");
   const [isActive, setIsActive] = useState(user?.isActive ?? true);
@@ -135,8 +121,9 @@ function UserEditor({ user, onSave, onDelete, onMessage, saving }: {
   );
   if (!user) return <div className="card-offset p-8 text-sagedark">Wähle links ein Konto aus, um es zu bearbeiten.</div>;
   return <div className="card-offset p-6 sm:p-8"><h2 className="text-2xl font-bold text-forest">Konto bearbeiten</h2><p className="mt-1 text-sm text-sagedark">{user.email ?? "keine E-Mail"}</p>
-    <form className="mt-5 space-y-4" onSubmit={(event) => { event.preventDefault(); onSave({ userId: user.id, name, role, membershipStatus, isActive, exchangeRole: exchangeRole || null }); }}>
+    <form className="mt-5 space-y-4" onSubmit={(event) => { event.preventDefault(); onSave({ userId: user.id, name, username, role, membershipStatus, isActive, exchangeRole: exchangeRole || null }); }}>
       <input className="input-line" value={name} onChange={(event) => setName(event.target.value)} required minLength={2} />
+      <input className="input-line" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} required minLength={3} maxLength={30} placeholder="Benutzername" />
       <select className="input-line" value={role} onChange={(event) => setRole(event.target.value as typeof role)}><option value="user">Nutzer</option><option value="admin">Admin</option></select>
       <select className="input-line" value={membershipStatus} onChange={(event) => setMembershipStatus(event.target.value as typeof membershipStatus)}><option value="free">Free</option><option value="active">Premium</option></select>
       <select className="input-line" value={exchangeRole} onChange={(event) => setExchangeRole(event.target.value as typeof exchangeRole)}><option value="">Status nicht festgelegt</option><option value="planung">Plant</option><option value="im_ausland">Im Ausland</option><option value="alumni">Alumni</option></select>

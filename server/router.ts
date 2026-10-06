@@ -3,9 +3,9 @@ import { forumRouter } from "./forum-router.js";
 import { createRouter, publicQuery } from "./middleware.js";
 import { z } from "zod";
 import { getDb } from "./queries/connection.js";
-import { contactMessages, directMessages } from "../db/schema.js";
+import { contactMessages, directMessages, typingStatuses, users } from "../db/schema.js";
 import { authedQuery, adminQuery } from "./middleware.js";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, gt, ilike, ne, or } from "drizzle-orm";
 
 export const appRouter = createRouter({
   ping: publicQuery.query(() => ({ ok: true, ts: Date.now() })),
@@ -31,6 +31,42 @@ export const appRouter = createRouter({
         with: { sender: true },
         limit: 100,
       });
+    }),
+    searchUsers: authedQuery.input(z.object({ query: z.string().min(1).max(60) })).query(async ({ ctx, input }) => {
+      const query = `%${input.query.trim().toLowerCase()}%`;
+      return getDb().query.users.findMany({
+        where: and(eq(users.isActive, true), or(ilike(users.username, query), ilike(users.name, query)), ne(users.id, ctx.user.id)),
+        columns: { id: true, username: true, name: true, avatar: true },
+        limit: 20,
+      });
+    }),
+    conversation: authedQuery.input(z.object({ userId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      return getDb().query.directMessages.findMany({
+        where: or(and(eq(directMessages.senderId, ctx.user.id), eq(directMessages.recipientId, input.userId)), and(eq(directMessages.senderId, input.userId), eq(directMessages.recipientId, ctx.user.id))),
+        orderBy: [directMessages.createdAt],
+        with: { sender: true },
+        limit: 200,
+      });
+    }),
+    sendDirect: authedQuery.input(z.object({ recipientId: z.number().int().positive(), body: z.string().min(1).max(5000) })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.id === input.recipientId) throw new Error("Du kannst dir nicht selbst schreiben.");
+      await getDb().insert(directMessages).values({ senderId: ctx.user.id, recipientId: input.recipientId, subject: "Nachricht", body: input.body });
+      await getDb().delete(typingStatuses).where(and(eq(typingStatuses.userId, ctx.user.id), eq(typingStatuses.recipientId, input.recipientId)));
+      return { ok: true };
+    }),
+    setTyping: authedQuery.input(z.object({ recipientId: z.number().int().positive(), typing: z.boolean() })).mutation(async ({ ctx, input }) => {
+      const db = getDb();
+      if (input.typing) {
+        await db.insert(typingStatuses).values({ userId: ctx.user.id, recipientId: input.recipientId, expiresAt: new Date(Date.now() + 5000) }).onConflictDoUpdate({
+          target: [typingStatuses.userId, typingStatuses.recipientId],
+          set: { expiresAt: new Date(Date.now() + 5000) },
+        });
+      } else await db.delete(typingStatuses).where(and(eq(typingStatuses.userId, ctx.user.id), eq(typingStatuses.recipientId, input.recipientId)));
+      return { ok: true };
+    }),
+    isTyping: authedQuery.input(z.object({ userId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const status = await getDb().query.typingStatuses.findFirst({ where: and(eq(typingStatuses.userId, input.userId), eq(typingStatuses.recipientId, ctx.user.id), gt(typingStatuses.expiresAt, new Date())) });
+      return { typing: !!status };
     }),
     markRead: authedQuery.input(z.object({ messageId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
       await getDb().update(directMessages).set({ readAt: new Date() }).where(and(eq(directMessages.id, input.messageId), eq(directMessages.recipientId, ctx.user.id)));

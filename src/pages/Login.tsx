@@ -8,6 +8,7 @@ export default function Login() {
   const navigate = useNavigate();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [plan, setPlan] = useState<"free" | "premium">("free");
@@ -36,7 +37,7 @@ export default function Login() {
     }
     const onError = (err: { message: string }) => setError(err.message);
     if (mode === "login") login.mutate({ email: normalizedEmail, password }, { onError });
-    else register.mutate({ name: name.trim(), email: normalizedEmail, password, plan }, { onError });
+    else register.mutate({ name: name.trim(), username: username.trim(), email: normalizedEmail, password, plan }, { onError });
   };
 
   return (
@@ -76,6 +77,7 @@ export default function Login() {
           <div className="my-6 flex items-center gap-3 text-[11px] text-sagedark"><span className="h-px flex-1 bg-forest/15" />oder mit E-Mail<span className="h-px flex-1 bg-forest/15" /></div>
           <form onSubmit={submit} noValidate className="space-y-3">
             {mode === "register" && <input className="input-line" placeholder="Dein Name" value={name} onChange={(e) => setName(e.target.value)} required minLength={2} />}
+            {mode === "register" && <input className="input-line" placeholder="Benutzername (z. B. lea_ausland)" value={username} onChange={(e) => setUsername(e.target.value.toLowerCase())} required minLength={3} maxLength={30} pattern="[a-zA-Z0-9_.-]{3,30}" />}
             {mode === "register" && (
               <div className="grid gap-2 sm:grid-cols-2">
                 <button type="button" onClick={() => setPlan("free")} className={`border-2 p-3 text-left ${plan === "free" ? "border-forest bg-forest text-cream" : "border-forest/15"}`}>

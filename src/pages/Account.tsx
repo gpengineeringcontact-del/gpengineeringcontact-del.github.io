@@ -7,6 +7,7 @@ export default function Account() {
   const navigate = useNavigate();
   const { user, isLoading, refresh } = useAuth({ redirectOnUnauthenticated: true });
   const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [exchangeRole, setExchangeRole] = useState<"planung" | "im_ausland" | "alumni" | "">("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -16,6 +17,7 @@ export default function Account() {
   useEffect(() => {
     if (user) {
       setName(user.name ?? "");
+      setUsername(user.username ?? "");
       setExchangeRole((user.exchangeRole as typeof exchangeRole) ?? "");
     }
   }, [user]);
@@ -61,9 +63,10 @@ export default function Account() {
           <h2 className="text-2xl font-bold text-forest">Profil</h2>
           <form className="mt-5 space-y-4" onSubmit={(event) => {
             event.preventDefault();
-            updateProfile.mutate({ name, exchangeRole: exchangeRole || null });
+            updateProfile.mutate({ name, username, exchangeRole: exchangeRole || null });
           }}>
             <input className="input-line" value={name} onChange={(event) => setName(event.target.value)} minLength={2} maxLength={255} required />
+            <input className="input-line" value={username} onChange={(event) => setUsername(event.target.value.toLowerCase())} minLength={3} maxLength={30} pattern="[a-zA-Z0-9_.-]{3,30}" required placeholder="Benutzername" />
             <select className="input-line" value={exchangeRole} onChange={(event) => setExchangeRole(event.target.value as typeof exchangeRole)}>
               <option value="">Noch nicht festgelegt</option>
               <option value="planung">Ich plane mein Auslandsjahr</option>

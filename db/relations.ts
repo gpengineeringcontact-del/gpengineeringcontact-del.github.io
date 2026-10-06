@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports, contactMessages, directMessages } from "./schema.js";
+import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports, contactMessages, directMessages, typingStatuses } from "./schema.js";
 
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
@@ -11,6 +11,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   contactMessages: many(contactMessages),
   sentMessages: many(directMessages, { relationName: "sentMessages" }),
   receivedMessages: many(directMessages, { relationName: "receivedMessages" }),
+  typingStatuses: many(typingStatuses),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -57,4 +58,9 @@ export const directMessagesRelations = relations(directMessages, ({ one }) => ({
   sender: one(users, { fields: [directMessages.senderId], references: [users.id], relationName: "sentMessages" }),
   recipient: one(users, { fields: [directMessages.recipientId], references: [users.id], relationName: "receivedMessages" }),
   contactMessage: one(contactMessages, { fields: [directMessages.contactMessageId], references: [contactMessages.id] }),
+}));
+
+export const typingStatusesRelations = relations(typingStatuses, ({ one }) => ({
+  user: one(users, { fields: [typingStatuses.userId], references: [users.id] }),
+  recipient: one(users, { fields: [typingStatuses.recipientId], references: [users.id] }),
 }));

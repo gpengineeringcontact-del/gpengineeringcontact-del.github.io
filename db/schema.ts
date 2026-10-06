@@ -13,6 +13,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   unionId: varchar("unionId", { length: 255 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
+  username: varchar("username", { length: 30 }).unique(),
   email: varchar("email", { length: 320 }),
   passwordHash: text("passwordHash"),
   avatar: text("avatar"),
@@ -144,6 +145,13 @@ export const directMessages = pgTable("direct_messages", {
   readAt: timestamp("readAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
+
+export const typingStatuses = pgTable("typing_statuses", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().references(() => users.id),
+  recipientId: integer("recipientId").notNull().references(() => users.id),
+  expiresAt: timestamp("expiresAt").notNull(),
+}, (table) => [uniqueIndex("typing_statuses_pair").on(table.userId, table.recipientId)]);
 
 export const passwordResetTokens = pgTable("password_reset_tokens", {
   id: serial("id").primaryKey(),

@@ -7,7 +7,7 @@ import { getSessionCookieOptions } from "./lib/cookies.js";
 import { createRouter, authedQuery, publicQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
 import { passwordResetTokens, posts, threads, users } from "../db/schema.js";
-import { and, eq, gt, isNull } from "drizzle-orm";
+import { and, eq, gt, isNull, ne } from "drizzle-orm";
 import { signSessionToken } from "./session.js";
 import { databaseErrorMessage } from "./lib/database-errors.js";
 import { sendPasswordResetEmail, sendRegistrationEmail } from "./lib/email.js";
@@ -74,6 +74,7 @@ export const authRouter = createRouter({
   }),
   register: publicQuery.input(z.object({
     name: z.string().min(2).max(255),
+    username: z.string().regex(/^[a-zA-Z0-9_.-]{3,30}$/),
     email: z.string().email().max(320),
     password: z.string().min(8).max(128),
     plan: z.enum(["free", "premium"]).default("free"),
@@ -87,9 +88,13 @@ export const authRouter = createRouter({
     }
     if (existing) throw new Error("Für diese E-Mail-Adresse gibt es bereits ein Konto.");
     const normalizedEmail = input.email.toLowerCase();
+    const username = input.username.toLowerCase();
+    const existingUsername = await db.query.users.findFirst({ where: eq(users.username, username) });
+    if (existingUsername) throw new Error("Dieser Benutzername ist bereits vergeben.");
     await db.insert(users).values({
       unionId: `email:${normalizedEmail}`,
       name: input.name.trim(),
+      username,
       email: normalizedEmail,
       passwordHash: await hashPassword(input.password),
       membershipPlan: input.plan,
@@ -115,9 +120,12 @@ export const authRouter = createRouter({
   me: authedQuery.query((opts) => opts.ctx.user),
   updateProfile: authedQuery.input(z.object({
     name: z.string().min(2).max(255),
+    username: z.string().regex(/^[a-zA-Z0-9_.-]{3,30}$/),
     exchangeRole: z.enum(["planung", "im_ausland", "alumni"]).nullable(),
   })).mutation(async ({ ctx, input }) => {
-    await getDb().update(users).set({ name: input.name.trim(), exchangeRole: input.exchangeRole }).where(eq(users.id, ctx.user.id));
+    const duplicate = await getDb().query.users.findFirst({ where: and(eq(users.username, input.username.toLowerCase()), ne(users.id, ctx.user.id)) });
+    if (duplicate) throw new Error("Dieser Benutzername ist bereits vergeben.");
+    await getDb().update(users).set({ name: input.name.trim(), username: input.username.toLowerCase(), exchangeRole: input.exchangeRole }).where(eq(users.id, ctx.user.id));
     return { success: true };
   }),
   changePassword: authedQuery.input(z.object({

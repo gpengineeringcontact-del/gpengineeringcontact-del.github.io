@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, ne } from "drizzle-orm";
 import { createRouter, publicQuery, authedQuery, memberQuery, adminQuery } from "./middleware.js";
 import { getDb } from "./queries/connection.js";
 import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, users } from "../db/schema.js";
@@ -252,6 +252,7 @@ export const forumRouter = createRouter({
     .input(z.object({
       userId: z.number().int().positive(),
       name: z.string().min(2).max(255),
+      username: z.string().regex(/^[a-zA-Z0-9_.-]{3,30}$/),
       role: z.enum(["user", "admin"]),
       membershipStatus: z.enum(["free", "active"]),
       isActive: z.boolean(),
@@ -261,8 +262,13 @@ export const forumRouter = createRouter({
       if (input.userId === ctx.user.id && (input.role !== "admin" || !input.isActive)) {
         throw new TRPCError({ code: "BAD_REQUEST", message: "Du kannst deinen eigenen Admin-Zugang nicht entfernen." });
       }
+      const duplicate = await getDb().query.users.findFirst({
+        where: and(eq(users.username, input.username.toLowerCase()), ne(users.id, input.userId)),
+      });
+      if (duplicate) throw new TRPCError({ code: "CONFLICT", message: "Dieser Benutzername ist bereits vergeben." });
       await getDb().update(users).set({
         name: input.name.trim(),
+        username: input.username.toLowerCase(),
         role: input.role,
         membershipStatus: input.membershipStatus,
         membershipPlan: input.membershipStatus === "active" ? "premium" : "free",
