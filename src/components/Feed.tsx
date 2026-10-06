@@ -25,57 +25,6 @@ const ROLE_LABEL: Record<string, string> = {
 
 const COUNTRY_FILTERS = ["Alle", "USA", "Kanada", "Neuseeland", "Australien"] as const;
 
-const DEMO_POSTS: FeedPost[] = [
-  {
-    id: -1,
-    caption: "Der erste Schnee in Vermont. Ich dachte, ich kenne Kälte – ich lag falsch. Dafür sieht der Schulweg jetzt aus wie ein Film.",
-    country: "USA",
-    locationLabel: "Vermont",
-    createdAt: new Date(Date.now() - 1000 * 60 * 42),
-    authorName: "Mara",
-    authorRole: "im_ausland",
-    likeCount: 28,
-    likedByMe: false,
-    imageSrc: "https://images.unsplash.com/photo-1517299321609-52687d1bc55a?auto=format&fit=crop&q=85&w=900",
-  },
-  {
-    id: -2,
-    caption: "Meine Gastmutter hat heute gefragt, ob ich Heimweh habe. Wir haben danach zwei Stunden in der Küche geredet. Genau solche Momente bleiben.",
-    country: "Kanada",
-    locationLabel: "British Columbia",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 4),
-    authorName: "Lina",
-    authorRole: "im_ausland",
-    likeCount: 41,
-    likedByMe: false,
-    imageSrc: "https://images.unsplash.com/photo-1500534623283-312aade485b7?auto=format&fit=crop&q=85&w=900",
-  },
-  {
-    id: -3,
-    caption: "Heute zum ersten Mal allein mit dem Zug nach Wellington. Kleine Schritte, riesiges Gefühl.",
-    country: "Neuseeland",
-    locationLabel: "Wellington",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 21),
-    authorName: "Noah",
-    authorRole: "alumni",
-    likeCount: 19,
-    likedByMe: false,
-    imageSrc: "https://images.unsplash.com/photo-1507699622108-4be3abd695ad?auto=format&fit=crop&q=85&w=900",
-  },
-  {
-    id: -4,
-    caption: "Ich sammle gerade Wörter, die es bei uns nicht gibt. ‚Arvo‘ ist ab jetzt mein Lieblingswort.",
-    country: "Australien",
-    locationLabel: "Melbourne",
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 30),
-    authorName: "Jule",
-    authorRole: "im_ausland",
-    likeCount: 12,
-    likedByMe: false,
-    imageSrc: "https://images.unsplash.com/photo-1523482580672-f109ba8cb9be?auto=format&fit=crop&q=85&w=900",
-  },
-];
-
 function timeAgo(date: Date): string {
   const diff = Date.now() - new Date(date).getTime();
   const min = Math.floor(diff / 60000);
@@ -172,7 +121,7 @@ export function Feed({
   });
 
   const posts = useMemo(() => {
-    const all = ((postsQuery.data?.length ? postsQuery.data : DEMO_POSTS) ?? []) as FeedPost[];
+    const all = (postsQuery.data ?? []) as FeedPost[];
     return filter === "Alle" ? all : all.filter((p) => p.country === filter);
   }, [postsQuery.data, filter]);
 
@@ -220,7 +169,7 @@ export function Feed({
 
       {postsQuery.isLoading && !postsQuery.isError ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {DEMO_POSTS.map((post) => <div key={post.id} className="h-72 animate-pulse rounded-2xl bg-forest/5" />)}
+          {Array.from({ length: 4 }, (_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-forest/5" />)}
         </div>
       ) : posts.length === 0 ? (
         <div className="card-offset mx-auto max-w-md p-8 text-center">

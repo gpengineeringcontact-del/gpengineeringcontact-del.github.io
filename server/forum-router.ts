@@ -5,6 +5,7 @@ import { createRouter, publicQuery, authedQuery, memberQuery, adminQuery } from 
 import { getDb } from "./queries/connection.js";
 import { contactMessages, posts, postLikes, threads, threadReplies, licenseRequests, reports, users } from "../db/schema.js";
 import { sendAdminMessageEmail } from "./lib/email.js";
+import { uploadPostImage } from "./lib/storage.js";
 
 const COUNTRIES = [
   "USA",
@@ -66,7 +67,7 @@ export const forumRouter = createRouter({
         }
         const extension = (input.imageName ?? "post.jpg").split(".").pop()?.toLowerCase();
         const mime = extension === "png" ? "image/png" : extension === "webp" ? "image/webp" : "image/jpeg";
-        imageUrl = `data:${mime};base64,${buffer.toString("base64")}`;
+        imageUrl = await uploadPostImage(buffer, extension ?? "jpg", mime);
       }
       const db = getDb();
       await db.insert(posts).values({
