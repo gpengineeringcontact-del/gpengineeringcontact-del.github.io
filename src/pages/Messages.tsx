@@ -48,8 +48,8 @@ export default function Messages() {
       </aside>
       <section className="card-offset flex min-h-[500px] flex-col p-5">
         {!selected ? <div className="m-auto text-center text-sagedark"><p className="text-lg font-semibold text-forest">Wähle einen Chat</p><p className="mt-2 text-sm">Suche nach einem Benutzernamen, um eine Nachricht zu schreiben.</p></div> : <>
-          <header className="border-b border-forest/10 pb-4"><h2 className="text-xl font-bold text-forest">{selected.name}</h2><p className="text-sm text-sagedark">@{selected.username}</p></header>
-          <div className="flex-1 space-y-3 overflow-y-auto py-5">{conversation.data?.map((item) => <div key={item.id} className={`flex ${item.senderId === user.id ? "justify-end" : "justify-start"}`}><p className={`max-w-[75%] rounded-2xl px-4 py-3 text-sm ${item.senderId === user.id ? "bg-forest text-cream" : "bg-paper text-forest"}`}>{item.body}</p></div>)}</div>
+          <header className="border-b border-forest/10 pb-4"><Link to={`/profil/${selected.id}`} className="text-xl font-bold text-forest transition-colors hover:text-tang">{selected.name}</Link><p className="text-sm text-sagedark">@{selected.username}</p></header>
+          <div className="flex-1 space-y-3 overflow-y-auto py-5">{conversation.data?.map((item) => <div key={item.id} className={`message-in flex ${item.senderId === user.id ? "justify-end" : "justify-start"}`}><p className={`chat-bubble max-w-[75%] px-4 py-3 text-sm ${item.senderId === user.id ? "chat-bubble-own" : "chat-bubble-other"}`}>{item.body}</p></div>)}</div>
           {typing.data?.typing && <p className="mb-2 text-xs italic text-sagedark">tippt gerade …</p>}
           <form className="flex gap-2 border-t border-forest/10 pt-4" onSubmit={(event) => { event.preventDefault(); if (selectedId && text.trim()) send.mutate({ recipientId: selectedId, body: text.trim() }); }}>
             <input className="input-line" placeholder="Nachricht schreiben …" value={text} onChange={(event) => setText(event.target.value)} />

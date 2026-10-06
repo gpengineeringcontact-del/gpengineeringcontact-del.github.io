@@ -167,9 +167,17 @@ export const reports = pgTable("reports", {
   reporterId: integer("reporterId").notNull().references(() => users.id),
   postId: integer("postId").references(() => posts.id),
   threadId: integer("threadId").references(() => threads.id),
+  reportedUserId: integer("reportedUserId").references(() => users.id),
   reason: varchar("reason", { length: 80 }).notNull(),
   details: text("details"),
   status: varchar("status", { length: 20 }).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   resolvedAt: timestamp("resolvedAt"),
 });
+
+export const userBlocks = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  blockerId: integer("blockerId").notNull().references(() => users.id),
+  blockedId: integer("blockedId").notNull().references(() => users.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, (table) => [uniqueIndex("user_blocks_pair").on(table.blockerId, table.blockedId)]);

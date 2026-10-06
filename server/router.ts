@@ -3,7 +3,7 @@ import { forumRouter } from "./forum-router.js";
 import { createRouter, publicQuery } from "./middleware.js";
 import { z } from "zod";
 import { getDb } from "./queries/connection.js";
-import { contactMessages, directMessages, typingStatuses, users } from "../db/schema.js";
+import { contactMessages, directMessages, posts, reports, typingStatuses, userBlocks, users } from "../db/schema.js";
 import { authedQuery, adminQuery } from "./middleware.js";
 import { and, desc, eq, gt, ilike, isNull, ne, or } from "drizzle-orm";
 
@@ -76,6 +76,26 @@ export const appRouter = createRouter({
         columns: { id: true, username: true, name: true, avatar: true },
         limit: 20,
       });
+    }),
+    profile: authedQuery.input(z.object({ userId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+      const db = getDb();
+      const profile = await db.query.users.findFirst({ where: and(eq(users.id, input.userId), eq(users.isActive, true)) });
+      if (!profile) throw new Error("Profil nicht gefunden.");
+      const profilePosts = await db.query.posts.findMany({ where: eq(posts.authorId, input.userId), orderBy: [desc(posts.createdAt)], limit: 60 });
+      const blocked = await db.query.userBlocks.findFirst({ where: and(eq(userBlocks.blockerId, ctx.user.id), eq(userBlocks.blockedId, input.userId)) });
+      return { user: { id: profile.id, name: profile.name, username: profile.username, avatar: profile.avatar, exchangeRole: profile.exchangeRole }, posts: profilePosts, blocked: !!blocked };
+    }),
+    reportUser: authedQuery.input(z.object({ userId: z.number().int().positive(), reason: z.string().min(2).max(80), details: z.string().max(1000).optional() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.id === input.userId) throw new Error("Du kannst dich nicht selbst melden.");
+      await getDb().insert(reports).values({ reporterId: ctx.user.id, reportedUserId: input.userId, reason: input.reason, details: input.details ?? null });
+      return { ok: true };
+    }),
+    blockUser: authedQuery.input(z.object({ userId: z.number().int().positive(), blocked: z.boolean() })).mutation(async ({ ctx, input }) => {
+      if (ctx.user.id === input.userId) throw new Error("Du kannst dich nicht selbst blockieren.");
+      const db = getDb();
+      if (input.blocked) await db.insert(userBlocks).values({ blockerId: ctx.user.id, blockedId: input.userId }).onConflictDoNothing();
+      else await db.delete(userBlocks).where(and(eq(userBlocks.blockerId, ctx.user.id), eq(userBlocks.blockedId, input.userId)));
+      return { ok: true };
     }),
     conversation: authedQuery.input(z.object({ userId: z.number().int().positive() })).query(async ({ ctx, input }) => {
       return getDb().query.directMessages.findMany({

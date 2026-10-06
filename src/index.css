@@ -39,4 +39,12 @@
   .masonry-item { break-inside: avoid; margin-bottom: 1.25rem; }
   .scroll-slim::-webkit-scrollbar { width: 6px; }
   .scroll-slim::-webkit-scrollbar-thumb { background: rgb(23 59 53 / .2); border-radius: 999px; }
+  .chat-bubble { position: relative; border-radius: 1.15rem; }
+  .chat-bubble::after { content: ""; position: absolute; bottom: 0; width: .7rem; height: .7rem; }
+  .chat-bubble-own { background: #173b35; color: #f7f4ed; }
+  .chat-bubble-own::after { right: -.28rem; background: #173b35; clip-path: polygon(0 0, 100% 100%, 0 100%); }
+  .chat-bubble-other { background: #d5a39d; color: #173b35; }
+  .chat-bubble-other::after { left: -.28rem; background: #d5a39d; clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+  .message-in { animation: message-in .24s cubic-bezier(.22, 1, .36, 1) both; }
+  @keyframes message-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 }

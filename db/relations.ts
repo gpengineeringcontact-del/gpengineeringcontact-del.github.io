@@ -1,5 +1,5 @@
 import { relations } from "drizzle-orm";
-import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports, contactMessages, directMessages, typingStatuses } from "./schema.js";
+import { users, posts, postLikes, threads, threadReplies, licenseRequests, passwordResetTokens, reports, contactMessages, directMessages, typingStatuses, userBlocks } from "./schema.js";
 
 export const usersRelations = relations(users, ({ many }) => ({
   posts: many(posts),
@@ -12,6 +12,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   sentMessages: many(directMessages, { relationName: "sentMessages" }),
   receivedMessages: many(directMessages, { relationName: "receivedMessages" }),
   typingStatuses: many(typingStatuses),
+  blocksGiven: many(userBlocks, { relationName: "blocksGiven" }),
+  blocksReceived: many(userBlocks, { relationName: "blocksReceived" }),
 }));
 
 export const postsRelations = relations(posts, ({ one, many }) => ({
@@ -47,6 +49,7 @@ export const reportsRelations = relations(reports, ({ one }) => ({
   reporter: one(users, { fields: [reports.reporterId], references: [users.id] }),
   post: one(posts, { fields: [reports.postId], references: [posts.id] }),
   thread: one(threads, { fields: [reports.threadId], references: [threads.id] }),
+  reportedUser: one(users, { fields: [reports.reportedUserId], references: [users.id] }),
 }));
 
 export const contactMessagesRelations = relations(contactMessages, ({ one, many }) => ({
@@ -63,4 +66,9 @@ export const directMessagesRelations = relations(directMessages, ({ one }) => ({
 export const typingStatusesRelations = relations(typingStatuses, ({ one }) => ({
   user: one(users, { fields: [typingStatuses.userId], references: [users.id] }),
   recipient: one(users, { fields: [typingStatuses.recipientId], references: [users.id] }),
+}));
+
+export const userBlocksRelations = relations(userBlocks, ({ one }) => ({
+  blocker: one(users, { fields: [userBlocks.blockerId], references: [users.id], relationName: "blocksGiven" }),
+  blocked: one(users, { fields: [userBlocks.blockedId], references: [users.id], relationName: "blocksReceived" }),
 }));

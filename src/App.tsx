@@ -9,6 +9,7 @@ import { ForgotPassword, ResetPassword } from './pages/PasswordReset'
 import Account from './pages/Account'
 import Admin from './pages/Admin'
 import Messages from './pages/Messages'
+import Profile from './pages/Profile'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/konto" element={<Account />} />
       <Route path="/admin" element={<Admin />} />
       <Route path="/nachrichten" element={<Messages />} />
+      <Route path="/profil/:userId" element={<Profile />} />
       <Route path="/ueber-uns" element={<About />} />
       <Route path="/kontakt" element={<Contact />} />
       <Route path="/impressum" element={<Imprint />} />
