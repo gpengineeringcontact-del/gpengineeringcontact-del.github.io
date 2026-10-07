@@ -9,8 +9,8 @@ export function Imprint() {
       <p>
         PerettiEbsen GbR<br />
         Markenauftritt: Wyfare<br />
-        Simonsweg 45<br />
-        41464 Neuss
+        Grünewaldstraße 16<br />
+        41466 Neuss
       </p>
       <h3>Vertreten durch die Gesellschafter</h3>
       <p>Guido Peretti und Christoph Ebsen</p>
@@ -22,8 +22,8 @@ export function Imprint() {
       <h3>Redaktionell verantwortlich</h3>
       <p>
         Guido Peretti und Christoph Ebsen<br />
-        Simonsweg 45<br />
-        41464 Neuss
+        Grünewaldstraße 16<br />
+        41466 Neuss
       </p>
       <h3>EU-Streitschlichtung</h3>
       <p>
